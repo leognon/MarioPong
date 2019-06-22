@@ -20,7 +20,7 @@ function setup() {
         if (amtLoaded >= totalToLoad) { //Once assets have loaded, connect to the server
             status = "menu";
             joinButton.show();
-            socket = io.connect('https://mario-pong-beta.herokuapp.com/');
+            socket = io();
             socket.on('status', s => {
                 status = s;
                 if (status == "waiting") joinButton.hide();
