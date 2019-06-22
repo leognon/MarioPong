@@ -285,13 +285,11 @@ class Game {
     }
 
     resetGame() {
-        this.players[0].reset();
-        this.players[1].reset();
         this.ball.reset();
     }
 
     update() {
-        this.players[0].update(); //TODO Maybe players shouldn't be allowed to move
+        this.players[0].update();
         this.players[1].update();
         if (!this.countingDown && !this.showingWinner) {
             this.ball.update(this.players[0], this.players[1]);
