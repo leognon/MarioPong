@@ -65,3 +65,6 @@ typings/
 
 # Mac Stuff
 .DS_Store
+# Vscode launch file
+.vscode
+launch.json
