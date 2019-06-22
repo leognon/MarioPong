@@ -6,7 +6,7 @@ const io = require('socket.io')(server)
 app.use(express.static('public'));
 console.log("Server started");
 
-const fps = 1000 / 60;
+const fps = 1000 / 30;
 // const date = new Date();
 // let lastFrameTime = date.getTime();
 // let deltaTime = 0;
@@ -80,7 +80,7 @@ class Ball {
         this.prevVel;
         this.maxAng = Math.PI * .4;
         // this.pos = new Vector((WIDTH / 2) + (this.width / 2), (HEIGHT / 2) + (this.height / 2));
-        this.speed = 6;
+        this.speed = 8;
         this.reset();
         // let maxAng = Math.PI / 2.5;
         // let ang = (Math.random() * (maxAng * 2)) - (maxAng);
@@ -165,7 +165,6 @@ class Ball {
                     if (p.down) { //If paddle is moving up, bounce it up more
                         const nextPos = new Vector(this.pos.x + this.vel.x, this.pos.y + this.vel.y);
                         if (this.hitRect(nextPos, nextPos, p.width, p.height)) {
-                            console.log("Boosting down");
                             this.pos.y += p.speed;
                             this.vel.y *= 1.3;
                         }
@@ -175,7 +174,6 @@ class Ball {
                     if (p.up) {
                         const nextPos = new Vector(this.pos.x - this.vel.x, this.pos.y + this.vel.y);
                         if (this.hitRect(nextPos, nextPos, p.width, p.height)) {
-                            console.log("Boosting up");
                             this.pos.y -= p.speed;
                             this.vel.y *= 1.3;
                         }
@@ -227,7 +225,7 @@ class Player {
         this.pos = new Vector(xPos, HEIGHT / 2 - (this.height / 2)); //The x and y of the top right corner of the paddle
         this.up = false; //Is the up key pressed
         this.down = false; //Is the down key pressed
-        this.speed = 4; //Vertical movement speed
+        this.speed = 8; //Vertical movement speed
     }
 
     reset() {
@@ -285,13 +283,11 @@ class Game {
     }
 
     resetGame() {
-        this.players[0].reset();
-        this.players[1].reset();
         this.ball.reset();
     }
 
     update() {
-        this.players[0].update(); //TODO Maybe players shouldn't be allowed to move
+        this.players[0].update();
         this.players[1].update();
         if (!this.countingDown && !this.showingWinner) {
             this.ball.update(this.players[0], this.players[1]);
