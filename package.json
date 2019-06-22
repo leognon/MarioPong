@@ -1,0 +1,19 @@
+{
+  "name": "multiplayer-pong",
+  "version": "1.0.0",
+  "description": "Based off a level-up youtube video, this is an online version of pong with mario incorporated.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "pong",
+    "multiplayer"
+  ],
+  "author": "Leo Gagnon",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^2.2.0"
+  }
+}
