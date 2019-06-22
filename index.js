@@ -80,7 +80,7 @@ class Ball {
         this.prevVel;
         this.maxAng = Math.PI * .4;
         // this.pos = new Vector((WIDTH / 2) + (this.width / 2), (HEIGHT / 2) + (this.height / 2));
-        this.speed = 2;
+        this.speed = 8;
         this.reset();
         // let maxAng = Math.PI / 2.5;
         // let ang = (Math.random() * (maxAng * 2)) - (maxAng);
@@ -225,7 +225,7 @@ class Player {
         this.pos = new Vector(xPos, HEIGHT / 2 - (this.height / 2)); //The x and y of the top right corner of the paddle
         this.up = false; //Is the up key pressed
         this.down = false; //Is the down key pressed
-        this.speed = 2; //Vertical movement speed
+        this.speed = 8; //Vertical movement speed
     }
 
     reset() {
