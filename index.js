@@ -6,10 +6,10 @@ const io = require('socket.io')(server)
 app.use(express.static('public'));
 console.log("Server started");
 
-const fps = 1000 / 30;
-// const date = new Date();
-// let lastFrameTime = date.getTime();
-// let deltaTime = 0;
+const fps = 1000 / 60;
+let date = new Date();
+let lastFrameTime = date.getTime();
+let deltaTime = 0;
 
 const WIDTH = 640;
 const HEIGHT = 360;
@@ -40,6 +40,11 @@ class Vector {
 
     magSq() {
         return (this.x * this.x) + (this.y * this.y);
+    }
+
+    mult(m) {
+        this.x *= m;
+        this.y *= m;
     }
 
     setMag(m) {
@@ -80,7 +85,7 @@ class Ball {
         this.prevVel;
         this.maxAng = Math.PI * .4;
         // this.pos = new Vector((WIDTH / 2) + (this.width / 2), (HEIGHT / 2) + (this.height / 2));
-        this.speed = 8;
+        this.speed = .3;
         this.reset();
         // let maxAng = Math.PI / 2.5;
         // let ang = (Math.random() * (maxAng * 2)) - (maxAng);
@@ -104,7 +109,8 @@ class Ball {
     update(p1, p2) {
         this.prevPos = this.pos.copy();
         this.prevVel = this.vel.copy();
-
+        // const fixedVel = this.vel.copy().mult(deltaTime);
+        this.vel.setMag(deltaTime * this.speed);
         this.pos.add(this.vel); //TODO WHAT IS THE BEST ORDER FOR THE MOVEMENT AND COLLISION STUFF?
 
         this.bounceWalls();
@@ -117,7 +123,6 @@ class Ball {
             this.vel.setMag(15);
         }
         if (this.vel.x < .3 && this.vel.x > -.3) { //Make sure the ball never goes too vertical
-            console.log("X IS TOO SMALL!");
             if (this.vel.x == 0) {
                 console.log("THE BALLS VEL.X IS ZERO!!!!!");
                 if (this.pos.x > WIDTH / 2) this.vel.x += .1;
@@ -225,7 +230,7 @@ class Player {
         this.pos = new Vector(xPos, HEIGHT / 2 - (this.height / 2)); //The x and y of the top right corner of the paddle
         this.up = false; //Is the up key pressed
         this.down = false; //Is the down key pressed
-        this.speed = 8; //Vertical movement speed
+        this.speed = .4; //Vertical movement speed
     }
 
     reset() {
@@ -235,8 +240,8 @@ class Player {
     }
 
     update() {
-        if (this.up) this.pos.y -= this.speed; //Move up
-        if (this.down) this.pos.y += this.speed; //Move down
+        if (this.up) this.pos.y -= (this.speed * deltaTime); //Move up
+        if (this.down) this.pos.y += (this.speed * deltaTime); //Move down
         this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position
     }
 
@@ -558,10 +563,9 @@ io.sockets.on('connection', socket => {
 });
 
 setInterval(() => {
-    // deltaTime = date.getTime() - lastFrameTime;
-    // lastFrameTime = date.getTime();
-    // console.log(deltaTime);
-    // console.log("next frame");
+    date = new Date();
+    deltaTime = date.getTime() - lastFrameTime;
+    lastFrameTime = date.getTime();
     for (room of rooms) {
         room.update();
     }
