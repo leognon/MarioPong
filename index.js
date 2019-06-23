@@ -111,7 +111,7 @@ class Ball {
         this.prevVel = this.vel.copy();
         // const fixedVel = this.vel.copy().mult(deltaTime);
         this.vel.setMag(deltaTime * this.speed);
-        this.pos.add(this.vel); //TODO WHAT IS THE BEST ORDER FOR THE MOVEMENT AND COLLISION STUFF?
+        this.pos.add(this.vel);
 
         this.bounceWalls();
         this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
@@ -565,6 +565,10 @@ io.sockets.on('connection', socket => {
 setInterval(() => {
     date = new Date();
     deltaTime = date.getTime() - lastFrameTime;
+    console.log(`${deltaTime - fps}`);
+    if (deltaTime > fps + 4) {
+        console.log(`Lag! A frame just took ${deltaTime}!`);
+    }
     lastFrameTime = date.getTime();
     for (room of rooms) {
         room.update();
