@@ -565,7 +565,6 @@ io.sockets.on('connection', socket => {
 setInterval(() => {
     date = new Date();
     deltaTime = date.getTime() - lastFrameTime;
-    console.log(`${deltaTime - fps}`);
     if (deltaTime > fps + 4) {
         console.log(`Lag! A frame just took ${deltaTime}!`);
     }
