@@ -6,7 +6,7 @@ const io = require('socket.io')(server)
 app.use(express.static('public'));
 console.log("Server started");
 
-const fps = 1000 / 60;
+const fps = 1000 / 45;
 let date = new Date();
 let lastFrameTime = date.getTime();
 let deltaTime = 0;
