@@ -131,7 +131,7 @@ function renderGame(gameData) {
                 else txt.text = "Game Over\nMario Wins";
             } else if (txt.text[1] == "Y") { //If yoshi won
                 if (marioOrYoshi == "Mario") txt.text = "Game Over\nYoshi Wins";
-                else txt.text = "Congratulatiosn\nYoshi Wins!";
+                else txt.text = "Congratulations\nYoshi Wins!";
             }
         }
         text(txt.text, txt.x, txt.y);
