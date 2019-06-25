@@ -6,9 +6,9 @@ const io = require('socket.io')(server)
 app.use(express.static('public'));
 console.log("Server started");
 
-const fps = 1000 / 45;
-let date = new Date();
-let lastFrameTime = date.getTime();
+const fps = 17 - 1; //1000 / 60; //Runs at ~60fps, the -1 is to fix innacuracies in JS timing
+const timingAccuracy = .6; //Lower is more accurate, but it takes more iterations
+let lastFrameTime = Date.now();
 let deltaTime = 0;
 
 const WIDTH = 640;
@@ -562,17 +562,26 @@ io.sockets.on('connection', socket => {
     // }
 });
 
-setInterval(() => {
-    date = new Date();
-    deltaTime = date.getTime() - lastFrameTime;
-    if (deltaTime > fps + 4) {
-        console.log(`Lag! A frame just took ${deltaTime}!`);
+let nextTime = Date.now();
+
+function gameLoop() {
+    let now = Date.now();
+    if (now >= nextTime) {
+        deltaTime = now - lastFrameTime;
+        lastFrameTime = now;
+        for (room of rooms) {
+            room.update();
+        }
+        nextTime = now + fps;
+        const timeToWait = nextTime - Date.now(); //Exactly how long to wait until the next frame
+        setTimeout(gameLoop, timeToWait * timingAccuracy); //Because JS timers sometimes take extra, decreause to be more precise
+    } else {
+        const timeToWait = nextTime - now;
+        setTimeout(gameLoop, timeToWait * timingAccuracy);
     }
-    lastFrameTime = date.getTime();
-    for (room of rooms) {
-        room.update();
-    }
-}, fps);
+};
+gameLoop();
+
 /*
 Client connects
 
