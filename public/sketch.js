@@ -13,8 +13,13 @@ let marioOrYoshi;
 const totalToLoad = 3;
 let amtLoaded = 0;
 
-function setup() {
+let player;
+let gameData = null;
 
+let deltaTime = 0;
+let lastFrameTime = Date.now();
+
+function setup() {
     function loaded() {
         amtLoaded++;
         if (amtLoaded >= totalToLoad) { //Once assets have loaded, connect to the server
@@ -24,15 +29,21 @@ function setup() {
             socket.on('status', s => {
                 status = s;
                 if (status == "waiting") joinButton.hide();
-                if (status == "menu") joinButton.style("display", "inline");
-                render();
+                if (status == "menu") {
+                    gameData = null;
+                    joinButton.style("display", "inline");
+                    sizeDOMCorrectly(); //Incase window resized in-game
+                }
                 console.log(status);
             });
-            socket.on('gameData', gameData => {
-                renderGame(gameData);
+            socket.on('gameData', d => {
+                gameData = d;
             });
-            socket.on('marioOrYoshi', data => {
+            socket.on('joined', data => {
                 marioOrYoshi = data;
+                const aOrB = (data == "Mario") ? 'A' : 'B';
+                player = new Player(aOrB);
+                status = "joined";
             });
 
             socket.on('disconnected', () => {
@@ -55,9 +66,19 @@ function setup() {
     joinButton.show(); //Show the button so it can get the correct height
     sizeDOMCorrectly(); //Size the dom
     joinButton.hide(); //Hide the join button until everything has loaded
+}
 
-    render();
-    noLoop();
+function draw() {
+    const now = Date.now();
+    deltaTime = now - lastFrameTime;
+    lastFrameTime = now;
+
+    if (status == "joined") {
+        player.update();
+        renderGame();
+    } else {
+        render();
+    }
 }
 
 function render() {
@@ -76,9 +97,6 @@ function render() {
         fill(255);
         const loadedWidth = map(amtLoaded, 0, totalToLoad, 0, width * .4);
         rect(width * .3, height / 2 - 20, loadedWidth, 40);
-        setTimeout(() => {
-            render();
-        }, (1000 / 60));
     } else if (status == "menu") {
         background(0);
         textSize(50 * scaleFactor);
@@ -90,53 +108,56 @@ function render() {
     }
 }
 
-function dbg() { //TODO REMOVE THIS IN THE END!
-    socket.emit('pauseToDebug');
-}
 
-function renderGame(gameData) {
+function renderGame() {
     background(0);
     push();
     scale(scaleFactor);
     fill(255);
-    noStroke();
-    textAlign(CENTER, CENTER);
-    textSize(20);
-    text(gameData.score[0], origWidth * .45, 25);
-    text(gameData.score[1], origWidth * .55, 25);
+    try {
+        noStroke();
+        textAlign(CENTER, CENTER);
+        textSize(20);
+        text(gameData.score[0], origWidth * .45, 25);
+        text(gameData.score[1], origWidth * .55, 25);
 
-    stroke(255);
-    strokeWeight(3);
-    const amtOfLines = 29;
-    for (let i = 0; i < origHeight; i += (origHeight * 2 / amtOfLines)) {
-        line(origWidth / 2, i, origWidth / 2, i + (origHeight / amtOfLines));
-    }
-    for (item of gameData.sprites) {
-        image(sprites[item.name], item.x, item.y, item.width, item.height);
-    }
-
-    noStroke();
-    for (txt of gameData.text) {
-        textSize(txt.size);
-        const txtWidth = textWidth(txt.text);
-        const txtHeight = txt.size;
-        fill(0);
-        rect(txt.x - txtWidth / 2, txt.y - txtHeight / 2, txtWidth, txtHeight);
-        fill(255);
-
-        if (txt.text == "START") txt.text = `${marioOrYoshi.toUpperCase()} START`;
-        if (txt.text[0] = "W") { //If the text is saying the winner
-            if (txt.text[1] == "M") { //If mario won
-                if (marioOrYoshi == "Mario") txt.text = "Congratulations\nMario Wins!";
-                else txt.text = "Game Over\nMario Wins";
-            } else if (txt.text[1] == "Y") { //If yoshi won
-                if (marioOrYoshi == "Mario") txt.text = "Game Over\nYoshi Wins";
-                else txt.text = "Congratulations\nYoshi Wins!";
-            }
+        stroke(255);
+        strokeWeight(3);
+        const amtOfLines = 29;
+        for (let i = 0; i < origHeight; i += (origHeight * 2 / amtOfLines)) {
+            line(origWidth / 2, i, origWidth / 2, i + (origHeight / amtOfLines));
         }
-        text(txt.text, txt.x, txt.y);
+        for (item of gameData.sprites) {
+            if (item.name != player.name) image(sprites[item.name], item.x, item.y, item.width, item.height);
+        }
+
+        noStroke();
+        for (txt of gameData.text) {
+            textSize(txt.size);
+            const txtWidth = textWidth(txt.text);
+            const txtHeight = txt.size;
+            fill(0);
+            rect(txt.x - txtWidth / 2, txt.y - txtHeight / 2, txtWidth, txtHeight);
+            fill(255);
+
+            if (txt.text == "START") txt.text = `${marioOrYoshi.toUpperCase()} START`;
+            if (txt.text[0] = "W") { //If the text is saying the winner
+                if (txt.text[1] == "M") { //If mario won
+                    if (marioOrYoshi == "Mario") txt.text = "Congratulations\nMario Wins!";
+                    else txt.text = "Game Over\nMario Wins";
+                } else if (txt.text[1] == "Y") { //If yoshi won
+                    if (marioOrYoshi == "Mario") txt.text = "Game Over\nYoshi Wins";
+                    else txt.text = "Congratulations\nYoshi Wins!";
+                }
+            }
+            text(txt.text, txt.x, txt.y);
+        }
+    } catch {
+        console.log("No game data yet!");
     }
 
+    if (player)
+        image(sprites[player.name], player.pos.x, player.pos.y, player.displayWidth, player.displayHeight);
     pop();
     noFill();
     stroke(255);
@@ -170,24 +191,115 @@ function sizeDOMCorrectly() {
     render();
 }
 
+window.onblur = () => {
+    try {
+        player.down = false;
+        player.up = false;
+    } catch {
+        console.log("Socket not defined yet!");
+    }
+}
+
 function keyPressed() {
-    if (status == "joined") {
+    if (status == "joined" && player) {
         if (keyCode == 38 || keyCode == 87) { //Up arrow or W
-            socket.emit('up', true);
+            player.up = true;
         }
         if (keyCode == 40 || keyCode == 83) { //Down Arrow or S
-            socket.emit('down', true);
+            player.down = true;
         }
     }
 }
 
 function keyReleased() {
-    if (status == "joined") {
-        if (keyCode == 38 || keyCode == 87) { //Up arrow or W
-            socket.emit('up', false);
+    if (status == "joined" && player) {
+        if (keyCode == 38 || keyCode == 87) { //Up arrow or 
+            player.up = false;
         }
         if (keyCode == 40 || keyCode == 83) { //Down Arrow or S
-            socket.emit('down', false);
+            player.down = false;
+        }
+    }
+}
+
+class Player {
+    constructor(aOrB) {
+        this.aOrB = aOrB;
+        this.name = `player${this.aOrB}`;
+        this.width = 20;
+        this.height = 50;
+        if (this.aOrB == 'A') { //Mario dimensions
+            this.displayWidth = 24;
+            this.displayHeight = 50;
+        }
+        if (this.aOrB == 'B') { //Yoshi dimensions
+            this.displayWidth = 34;
+            this.displayHeight = 50;
+        }
+        let xPos = 40;
+        if (this.aOrB == 'B') {
+            xPos = origWidth - this.width - 40;
+        }
+        this.pos = new Vector(xPos, origHeight / 2 - (this.height / 2)); //The x and y of the top right corner of the paddle
+        this.prevY = undefined;
+        this.up = false; //Is the up key pressed
+        this.down = false; //Is the down key pressed
+        this.speed = .4; //Vertical movement speed
+    }
+
+    reset() {
+        this.pos.y = origHeight / 2 - (this.height / 2);
+        this.up = false;
+        this.down = false;
+    }
+
+    update() {
+        if (this.up) this.pos.y -= (this.speed * deltaTime); //Move up
+        if (this.down) this.pos.y += (this.speed * deltaTime); //Move down
+        this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position
+        if (this.pos.y != this.prevY) { //If the player has moved
+            socket.emit('yPos', this.pos.y);
+            this.prevY = this.pos.y;
+        }
+    }
+
+}
+
+class Vector {
+    constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+    }
+
+    set(a, b) {
+        this.x = a;
+        this.y = b;
+    }
+
+    copy() {
+        return (new Vector(this.x, this.y));
+    }
+
+    add(v) {
+        this.x += v.x;
+        this.y += v.y;
+    }
+
+    magSq() {
+        return (this.x * this.x) + (this.y * this.y);
+    }
+
+    mult(m) {
+        this.x *= m;
+        this.y *= m;
+    }
+
+    setMag(m) {
+        const currMagSq = (this.x * this.x) + (this.y * this.y);
+        if (m * m != currMagSq) {
+            const currMag = Math.sqrt(currMagSq);
+            this.x = (this.x / currMag) * m;
+            this.y = (this.y / currMag) * m;
         }
     }
 }

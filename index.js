@@ -239,10 +239,9 @@ class Player {
         this.down = false;
     }
 
-    update() {
-        if (this.up) this.pos.y -= (this.speed * deltaTime); //Move up
-        if (this.down) this.pos.y += (this.speed * deltaTime); //Move down
-        this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position
+
+    setY(y) {
+        this.pos.y = y;
     }
 
     serialize() {
@@ -292,8 +291,6 @@ class Game {
     }
 
     update() {
-        this.players[0].update();
-        this.players[1].update();
         if (!this.countingDown && !this.showingWinner) {
             this.ball.update(this.players[0], this.players[1]);
         }
@@ -352,11 +349,8 @@ class Game {
 
     inp(pIndex, data) {
         switch (data.type) {
-            case "up":
-                this.players[pIndex].up = data.data;
-                break;
-            case "down":
-                this.players[pIndex].down = data.data;
+            case "yPos":
+                this.players[pIndex].setY(data.data);
                 break;
         }
     }
@@ -371,8 +365,6 @@ class Room {
         this.game = new Game();
         console.log("Joining room");
         this.joinRoom();
-        this.clientASocket.emit('marioOrYoshi', "Mario");
-        this.clientBSocket.emit('marioOrYoshi', "Yoshi");
     }
 
     update() {
@@ -382,49 +374,6 @@ class Room {
         }
         io.sockets.to(this.roomId).emit('gameData', gameData);
     }
-
-    // addFunctions(socket) {
-    //     socket.on('up', pressed => {
-    //         // let playerIndex;
-    //         // if (socket.id == this.clientASocket.id) {
-    //         //     playerIndex = 0;
-    //         // } else if (socket.id == this.clientBSocket.id) {
-    //         //     playerIndex = 1;
-    //         // } else {
-    //         //     playerIndex = 0;
-    //         //     console.log("SOMETHING WENT WRONG" + socket.id);
-    //         //     console.log(`Expected A: ${this.clientASocket.id} or B: ${this.clientBSocket.id}`);
-    //         // }
-    //         // const playerIndex = 0 ? socket.id == this.clientASocket.id : 1;
-    //         let playerIndex = 0; // ? socket.id == this.clientASocket.id : 1;
-    //         if (socket.id == this.clientBSocket.id) playerIndex = 1;
-    //         // console.log(playerIndex);
-    //         this.game.players[playerIndex].up = pressed;
-    //     });
-    //     socket.on('down', pressed => {
-    //         // console.log(socket.id);
-    //         // let playerIndex;
-    //         // if (socket.id == this.clientASocket.id) {
-    //         //     playerIndex = 0; 
-    //         //     // console.log("Player A");
-    //         // } else if (socket.id == this.clientBSocket.id) {
-    //         //     playerIndex = 1;
-    //         //     // console.log("Player B");
-    //         // } else {
-    //         //     playerIndex = 0;
-    //         //     console.log("SOMETHING WENT WRONG" + socket.id);
-    //         //     console.log(`Expected A: ${this.clientASocket.id} or B: ${this.clientBSocket.id}`);
-    //         // }
-
-    //         let playerIndex = 0; // ? socket.id == this.clientASocket.id : 1;
-    //         if (socket.id == this.clientBSocket.id) playerIndex = 1;
-    //         this.game.players[playerIndex].down = pressed;
-    //     });
-    //     socket.on('disconnect', () => {
-    //         socket = null;
-    //         this.leaveRoom(); 
-    //     });
-    // }
 
     clientDisconnected(id) {
         if (this.clientASocket.id == id) this.leaveRoom(this.clientBSocket.id);
@@ -448,7 +397,9 @@ class Room {
     joinRoom() {
         this.clientASocket.join(this.roomId);
         this.clientBSocket.join(this.roomId);
-        io.sockets.to(this.roomId).emit('status', 'joined');
+
+        this.clientASocket.emit('joined', "Mario");
+        this.clientBSocket.emit('joined', "Yoshi");
     }
 
     contains(id) {
@@ -511,32 +462,17 @@ io.sockets.on('connection', socket => {
         console.log("Debug!");
     });
 
-    socket.on('up', pressed => {
+    socket.on('yPos', y => {
         const room = roomOf(socket);
         if (room != false) {
             const data = {
-                type: 'up',
-                data: pressed
+                type: 'yPos',
+                data: y
             }
             room.recievedInp(socket.id, data);
         }
-        // let playerIndex = 0;
-        // if (socket.id == this.clientBSocket.id) playerIndex = 1;
-        // this.game.players[playerIndex].up = pressed;
     });
-    socket.on('down', pressed => {
-        const room = roomOf(socket);
-        if (room != false) {
-            const data = {
-                type: 'down',
-                data: pressed
-            }
-            room.recievedInp(socket.id, data);
-        }
-        // let playerIndex = 0;
-        // if (socket.id == this.clientBSocket.id) playerIndex = 1;
-        // this.game.players[playerIndex].down = pressed;
-    });
+
     socket.on('disconnect', () => {
         const room = roomOf(socket);
         if (clientsQueue.indexOf(socket) >= 0) {
@@ -549,17 +485,6 @@ io.sockets.on('connection', socket => {
             console.log(`Client ${socket.id} has disconnected from the menu`);
         }
     });
-
-    // io.sockets.to(socket.id).emit('status', 'waiting');
-    // socket.emit('status', 'waiting');
-
-    // io.sockets.connected[socket.id].emit('status', 'waiting'); //Emits to one socket
-
-    // if (!game.clientA) game.clientA = socket.id;
-    // else if (!game.clientB) game.clientB = socket.id;
-    // else {
-    //     io.sockets.socket(socket.id).emit('extraPlayer');
-    // }
 });
 
 let nextTime = Date.now();
