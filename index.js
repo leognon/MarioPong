@@ -6,10 +6,10 @@ const io = require('socket.io')(server)
 app.use(express.static('public'));
 console.log("Server started");
 
-const fps = 1000 / 30;
-// const date = new Date();
-// let lastFrameTime = date.getTime();
-// let deltaTime = 0;
+const fps = 17 - 1; //1000 / 60; //Runs at ~60fps, the -1 is to fix innacuracies in JS timing
+const timingAccuracy = .6; //Lower is more accurate, but it takes more iterations
+let lastFrameTime = Date.now();
+let deltaTime = 0;
 
 const WIDTH = 640;
 const HEIGHT = 360;
@@ -40,6 +40,11 @@ class Vector {
 
     magSq() {
         return (this.x * this.x) + (this.y * this.y);
+    }
+
+    mult(m) {
+        this.x *= m;
+        this.y *= m;
     }
 
     setMag(m) {
@@ -80,7 +85,7 @@ class Ball {
         this.prevVel;
         this.maxAng = Math.PI * .4;
         // this.pos = new Vector((WIDTH / 2) + (this.width / 2), (HEIGHT / 2) + (this.height / 2));
-        this.speed = 8;
+        this.speed = .3;
         this.reset();
         // let maxAng = Math.PI / 2.5;
         // let ang = (Math.random() * (maxAng * 2)) - (maxAng);
@@ -104,8 +109,9 @@ class Ball {
     update(p1, p2) {
         this.prevPos = this.pos.copy();
         this.prevVel = this.vel.copy();
-
-        this.pos.add(this.vel); //TODO WHAT IS THE BEST ORDER FOR THE MOVEMENT AND COLLISION STUFF?
+        // const fixedVel = this.vel.copy().mult(deltaTime);
+        this.vel.setMag(deltaTime * this.speed);
+        this.pos.add(this.vel);
 
         this.bounceWalls();
         this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
@@ -117,7 +123,6 @@ class Ball {
             this.vel.setMag(15);
         }
         if (this.vel.x < .3 && this.vel.x > -.3) { //Make sure the ball never goes too vertical
-            console.log("X IS TOO SMALL!");
             if (this.vel.x == 0) {
                 console.log("THE BALLS VEL.X IS ZERO!!!!!");
                 if (this.pos.x > WIDTH / 2) this.vel.x += .1;
@@ -225,7 +230,7 @@ class Player {
         this.pos = new Vector(xPos, HEIGHT / 2 - (this.height / 2)); //The x and y of the top right corner of the paddle
         this.up = false; //Is the up key pressed
         this.down = false; //Is the down key pressed
-        this.speed = 8; //Vertical movement speed
+        this.speed = .4; //Vertical movement speed
     }
 
     reset() {
@@ -234,10 +239,9 @@ class Player {
         this.down = false;
     }
 
-    update() {
-        if (this.up) this.pos.y -= this.speed; //Move up
-        if (this.down) this.pos.y += this.speed; //Move down
-        this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position
+
+    setY(y) {
+        this.pos.y = y;
     }
 
     serialize() {
@@ -287,8 +291,6 @@ class Game {
     }
 
     update() {
-        this.players[0].update();
-        this.players[1].update();
         if (!this.countingDown && !this.showingWinner) {
             this.ball.update(this.players[0], this.players[1]);
         }
@@ -347,11 +349,8 @@ class Game {
 
     inp(pIndex, data) {
         switch (data.type) {
-            case "up":
-                this.players[pIndex].up = data.data;
-                break;
-            case "down":
-                this.players[pIndex].down = data.data;
+            case "yPos":
+                this.players[pIndex].setY(data.data);
                 break;
         }
     }
@@ -366,8 +365,6 @@ class Room {
         this.game = new Game();
         console.log("Joining room");
         this.joinRoom();
-        this.clientASocket.emit('marioOrYoshi', "Mario");
-        this.clientBSocket.emit('marioOrYoshi', "Yoshi");
     }
 
     update() {
@@ -377,49 +374,6 @@ class Room {
         }
         io.sockets.to(this.roomId).emit('gameData', gameData);
     }
-
-    // addFunctions(socket) {
-    //     socket.on('up', pressed => {
-    //         // let playerIndex;
-    //         // if (socket.id == this.clientASocket.id) {
-    //         //     playerIndex = 0;
-    //         // } else if (socket.id == this.clientBSocket.id) {
-    //         //     playerIndex = 1;
-    //         // } else {
-    //         //     playerIndex = 0;
-    //         //     console.log("SOMETHING WENT WRONG" + socket.id);
-    //         //     console.log(`Expected A: ${this.clientASocket.id} or B: ${this.clientBSocket.id}`);
-    //         // }
-    //         // const playerIndex = 0 ? socket.id == this.clientASocket.id : 1;
-    //         let playerIndex = 0; // ? socket.id == this.clientASocket.id : 1;
-    //         if (socket.id == this.clientBSocket.id) playerIndex = 1;
-    //         // console.log(playerIndex);
-    //         this.game.players[playerIndex].up = pressed;
-    //     });
-    //     socket.on('down', pressed => {
-    //         // console.log(socket.id);
-    //         // let playerIndex;
-    //         // if (socket.id == this.clientASocket.id) {
-    //         //     playerIndex = 0; 
-    //         //     // console.log("Player A");
-    //         // } else if (socket.id == this.clientBSocket.id) {
-    //         //     playerIndex = 1;
-    //         //     // console.log("Player B");
-    //         // } else {
-    //         //     playerIndex = 0;
-    //         //     console.log("SOMETHING WENT WRONG" + socket.id);
-    //         //     console.log(`Expected A: ${this.clientASocket.id} or B: ${this.clientBSocket.id}`);
-    //         // }
-
-    //         let playerIndex = 0; // ? socket.id == this.clientASocket.id : 1;
-    //         if (socket.id == this.clientBSocket.id) playerIndex = 1;
-    //         this.game.players[playerIndex].down = pressed;
-    //     });
-    //     socket.on('disconnect', () => {
-    //         socket = null;
-    //         this.leaveRoom(); 
-    //     });
-    // }
 
     clientDisconnected(id) {
         if (this.clientASocket.id == id) this.leaveRoom(this.clientBSocket.id);
@@ -443,7 +397,9 @@ class Room {
     joinRoom() {
         this.clientASocket.join(this.roomId);
         this.clientBSocket.join(this.roomId);
-        io.sockets.to(this.roomId).emit('status', 'joined');
+
+        this.clientASocket.emit('joined', "Mario");
+        this.clientBSocket.emit('joined', "Yoshi");
     }
 
     contains(id) {
@@ -506,32 +462,17 @@ io.sockets.on('connection', socket => {
         console.log("Debug!");
     });
 
-    socket.on('up', pressed => {
+    socket.on('yPos', y => {
         const room = roomOf(socket);
         if (room != false) {
             const data = {
-                type: 'up',
-                data: pressed
+                type: 'yPos',
+                data: y
             }
             room.recievedInp(socket.id, data);
         }
-        // let playerIndex = 0;
-        // if (socket.id == this.clientBSocket.id) playerIndex = 1;
-        // this.game.players[playerIndex].up = pressed;
     });
-    socket.on('down', pressed => {
-        const room = roomOf(socket);
-        if (room != false) {
-            const data = {
-                type: 'down',
-                data: pressed
-            }
-            room.recievedInp(socket.id, data);
-        }
-        // let playerIndex = 0;
-        // if (socket.id == this.clientBSocket.id) playerIndex = 1;
-        // this.game.players[playerIndex].down = pressed;
-    });
+
     socket.on('disconnect', () => {
         const room = roomOf(socket);
         if (clientsQueue.indexOf(socket) >= 0) {
@@ -544,28 +485,28 @@ io.sockets.on('connection', socket => {
             console.log(`Client ${socket.id} has disconnected from the menu`);
         }
     });
-
-    // io.sockets.to(socket.id).emit('status', 'waiting');
-    // socket.emit('status', 'waiting');
-
-    // io.sockets.connected[socket.id].emit('status', 'waiting'); //Emits to one socket
-
-    // if (!game.clientA) game.clientA = socket.id;
-    // else if (!game.clientB) game.clientB = socket.id;
-    // else {
-    //     io.sockets.socket(socket.id).emit('extraPlayer');
-    // }
 });
 
-setInterval(() => {
-    // deltaTime = date.getTime() - lastFrameTime;
-    // lastFrameTime = date.getTime();
-    // console.log(deltaTime);
-    // console.log("next frame");
-    for (room of rooms) {
-        room.update();
+let nextTime = Date.now();
+
+function gameLoop() {
+    let now = Date.now();
+    if (now >= nextTime) {
+        deltaTime = now - lastFrameTime;
+        lastFrameTime = now;
+        for (room of rooms) {
+            room.update();
+        }
+        nextTime = now + fps;
+        const timeToWait = nextTime - Date.now(); //Exactly how long to wait until the next frame
+        setTimeout(gameLoop, timeToWait * timingAccuracy); //Because JS timers sometimes take extra, decreause to be more precise
+    } else {
+        const timeToWait = nextTime - now;
+        setTimeout(gameLoop, timeToWait * timingAccuracy);
     }
-}, fps);
+};
+gameLoop();
+
 /*
 Client connects
 
