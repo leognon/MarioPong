@@ -84,13 +84,8 @@ class Ball {
         this.prevPos;
         this.prevVel;
         this.maxAng = Math.PI * .4;
-        // this.pos = new Vector((WIDTH / 2) + (this.width / 2), (HEIGHT / 2) + (this.height / 2));
         this.speed = .3;
         this.reset();
-        // let maxAng = Math.PI / 2.5;
-        // let ang = (Math.random() * (maxAng * 2)) - (maxAng);
-        // if (Math.random() < .5) ang += Math.PI;
-        // this.vel = new Vector(Math.cos(ang) * this.speed, Math.sin(ang) * this.speed);
     }
 
     fixMag() {
@@ -203,6 +198,8 @@ class Ball {
             'name': 'ball',
             'x': this.pos.x,
             'y': this.pos.y,
+            'vx': this.vel.x,
+            'vy': this.vel.y,
             'width': this.width,
             'height': this.height
         };
@@ -273,6 +270,7 @@ class Game {
     }
 
     beginCountdown() {
+        this.ball.vel.mult(0); //Stop ball moving during countdown
         this.countdownInterval = setInterval(() => { //Display Countdown for 3 seconds
             this.countdownTime--;
             this.countdownText.text = this.countdownTime > 0 ? this.countdownTime : "START";
@@ -315,10 +313,10 @@ class Game {
 
         const gameData = {
             "sprites": [
-                this.ball.serialize(),
                 this.players[0].serialize(),
                 this.players[1].serialize()
             ],
+            "ball": this.ball.serialize(),
             "score": [this.players[0].score, this.players[1].score],
             "text": []
         };

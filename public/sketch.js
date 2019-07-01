@@ -14,6 +14,8 @@ const totalToLoad = 3;
 let amtLoaded = 0;
 
 let player;
+let ball;
+let justReceivedData = false;
 let gameData = null;
 
 let deltaTime = 0;
@@ -30,6 +32,7 @@ function setup() {
                 status = s;
                 if (status == "waiting") joinButton.hide();
                 if (status == "menu") {
+                    ball = null;
                     gameData = null;
                     joinButton.style("display", "inline");
                     sizeDOMCorrectly(); //Incase window resized in-game
@@ -37,6 +40,13 @@ function setup() {
                 console.log(status);
             });
             socket.on('gameData', d => {
+                if (ball) {
+                    ball.setPos(d.ball.x, d.ball.y);
+                    ball.setVel(d.ball.vx, d.ball.vy);
+                } else {
+                    ball = new Ball(d.ball.width, d.ball.height, d.ball.x, d.ball.y, d.ball.vx, d.ball.vy);
+                }
+                justReceivedData = true;
                 gameData = d;
             });
             socket.on('joined', data => {
@@ -129,6 +139,14 @@ function renderGame() {
         }
         for (item of gameData.sprites) {
             if (item.name != player.name) image(sprites[item.name], item.x, item.y, item.width, item.height);
+        }
+        if (ball) {
+            if (!justReceivedData) {
+                ball.update();
+            }
+            justReceivedData = false;
+            // console.log(ball);
+            image(sprites["ball"], ball.pos.x, ball.pos.y, ball.width, ball.height);
         }
 
         noStroke();
@@ -263,6 +281,60 @@ class Player {
         }
     }
 
+}
+
+
+class Ball {
+    constructor(w, h, x, y, vx, vy) {
+        this.width = w;
+        this.height = h;
+        this.pos = new Vector(x, y);
+        this.vel = new Vector(vx, vy);
+        this.speed = .3;
+    }
+
+    fixMag() {
+        this.vel.setMag(this.speed);
+    }
+
+    update() {
+        this.vel.setMag(deltaTime * this.speed);
+        this.pos.add(this.vel);
+
+        this.bounceWalls();
+        this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor
+
+        if (this.vel.magSq() > 225) { //Make sure the ball never goes too fast (can't go above 15 speed)
+            this.vel.setMag(15);
+        }
+        if (this.vel.x < .3 && this.vel.x > -.3) { //Make sure the ball never goes too vertical
+            if (this.vel.x == 0) {
+                if (this.pos.x > WIDTH / 2) this.vel.x += .1;
+                else this.vel.x -= .1
+            } else if (this.vel.x >= 0) {
+                this.vel.x += .05;
+            } else {
+                this.vel.x -= .05;
+            }
+            this.fixMag();
+        }
+    }
+
+    setPos(x, y) {
+        this.pos.x = x;
+        this.pos.y = y;
+    }
+
+    setVel(x, y) {
+        this.vel.x = x;
+        this.vel.y = y;
+    }
+
+    bounceWalls() { //Bounce off floor and ceiling
+        if ((this.pos.y <= 0 && this.vel.y < 0) || (this.pos.y >= origHeight - this.height && this.vel.y > 0)) {
+            this.vel.y *= -1;
+        }
+    }
 }
 
 class Vector {
