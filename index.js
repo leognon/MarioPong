@@ -60,9 +60,17 @@ class Vector {
         return Math.sqrt((this.x * this.x) + (this.y * this.y));
     }
 
-    mult(m) {
-        this.x *= m;
-        this.y *= m;
+    mult(a, b = null) {
+        if (a instanceof Vector) {
+            this.x *= a.x;
+            this.y *= a.y;
+        } else if (b == null) {
+            this.x *= a;
+            this.y *= a;
+        } else {
+            this.x *= a;
+            this.y *= b;
+        }
     }
 
     setMag(m) {
@@ -292,6 +300,10 @@ class Fireball {
         }
     }
 
+    stopMoving() {
+        this.vel.mult(0);
+    }
+
     hitPaddle(p) {
         return this.hitRect(this.pos, p);
 
@@ -442,14 +454,15 @@ class Game {
     }
 
     beginCountdown() {
+        this.fireballs.map(f => f.stopMoving()); //Stop fireballs from moving
         this.ball.vel.mult(0); //Stop ball moving during countdown
         this.countdownInterval = setInterval(() => { //Display Countdown for 3 seconds
-            this.countdownTime--;
-            this.countdownText.text = this.countdownTime > 0 ? this.countdownTime : "START";
+            this.countdownTime--; //Countdown
+            this.countdownText.text = this.countdownTime > 0 ? this.countdownTime : "START"; //Display 3 2 1 START
             if (this.countdownTime < 0) {
                 clearInterval(this.countdownInterval);
                 this.countdownTime = 3;
-                this.countdownText.text = "3";
+                this.countdownText.text = "3"; //Reset countdown stuff
                 this.countingDown = false;
                 this.resetGame();
             }
@@ -489,8 +502,8 @@ class Game {
         }
         const scored = this.ball.checkScore();
 
-        if (scored[0] == true && !this.countingDown && !this.showingWinner) {
-            if (scored[1] < WIDTH / 2) this.players[1].score++;
+        if (scored[0] == true && !this.countingDown && !this.showingWinner) { //Check if someone has scored
+            if (scored[1] < WIDTH / 2) this.players[1].score++; //Increase score for whoever just scored
             else this.players[0].score++;
 
             const winner = this.winner();
@@ -500,8 +513,9 @@ class Game {
             } else { //Someone has won
                 this.winnerText.text = `W${winner}`;
                 this.showingWinner = true;
+                this.fireballs.map(f => f.stopMoving());
                 setTimeout(() => {
-                    this.endGame()
+                    this.endGame();
                 }, 2500);
             }
         }
