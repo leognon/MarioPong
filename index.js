@@ -24,6 +24,10 @@ class Vector {
         this.y = y;
     }
 
+    heading() {
+        return Math.atan2(this.y, this.x);
+    }
+
     set(a, b) {
         this.x = a;
         this.y = b;
@@ -38,8 +42,22 @@ class Vector {
         this.y += v.y;
     }
 
+    sub(v, z) {
+        if (v instanceof Vector) {
+            this.x += v.x;
+            this.y += v.y;
+        } else {
+            this.x -= v.x;
+            this.y -= z.y;
+        }
+    }
+
     magSq() {
         return (this.x * this.x) + (this.y * this.y);
+    }
+
+    mag() {
+        return Math.sqrt((this.x * this.x) + (this.y * this.y));
     }
 
     mult(m) {
@@ -84,13 +102,9 @@ class Ball {
         this.prevPos;
         this.prevVel;
         this.maxAng = Math.PI * .4;
-        // this.pos = new Vector((WIDTH / 2) + (this.width / 2), (HEIGHT / 2) + (this.height / 2));
-        this.speed = .3;
+        this.baseSpeed = .2;
+        this.speed = this.baseSpeed;
         this.reset();
-        // let maxAng = Math.PI / 2.5;
-        // let ang = (Math.random() * (maxAng * 2)) - (maxAng);
-        // if (Math.random() < .5) ang += Math.PI;
-        // this.vel = new Vector(Math.cos(ang) * this.speed, Math.sin(ang) * this.speed);
     }
 
     fixMag() {
@@ -98,26 +112,30 @@ class Ball {
     }
 
     reset() {
-        this.pos = new Vector((WIDTH / 2) + (this.width / 2), (HEIGHT / 2) + (this.height / 2));
+        this.speed = this.baseSpeed;
+        this.pos = new Vector((WIDTH / 2) - (this.width / 2), (HEIGHT / 2) - (this.height / 2));
         let ang = (Math.random() * (this.maxAng * 2)) - (this.maxAng);
         if (Math.random() < .5) ang += Math.PI;
+
+        ang = 0; //TODO REMOVE this
         this.vel = new Vector(Math.cos(ang) * this.speed, Math.sin(ang) * this.speed);
         this.prevPos = this.pos.copy();
         this.prevVel = new Vector();
     }
 
     update(p1, p2) {
+        let bouncedOff = -1;
+
         this.prevPos = this.pos.copy();
         this.prevVel = this.vel.copy();
-        // const fixedVel = this.vel.copy().mult(deltaTime);
         this.vel.setMag(deltaTime * this.speed);
+
         this.pos.add(this.vel);
 
         this.bounceWalls();
         this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
-        this.hitPaddle(p1, -1);
-        this.hitPaddle(p2, 1);
-
+        if (p1.powerup != "dead" && this.hitPaddle(p1, -1)) bouncedOff = 0;
+        if (p2.powerup != "dead" && this.hitPaddle(p2, 1)) bouncedOff = 1
 
         if (this.vel.magSq() > 225) { //Make sure the ball never goes too fast (can't go above 15 speed)
             this.vel.setMag(15);
@@ -134,6 +152,7 @@ class Ball {
             }
             this.fixMag();
         }
+        return bouncedOff;
     }
 
     bounceWalls() { //Bounce off floor and ceiling
@@ -151,41 +170,56 @@ class Ball {
     }
 
     hitPaddle(p, desDir) {
-        if (desDir == this.vel.x / Math.abs(this.vel.x) && this.hitRect(this.pos, p)) {
+        let hasBounced = false;
+        if (this.hitRect(this.pos, p)) {
             const xChanged = new Vector(this.prevPos.x + this.prevVel.x, this.prevPos.y); //Testing to see if it is bouncing of the side
             const yChanged = new Vector(this.prevPos.x, this.prevPos.y + this.prevVel.y); //Or the top/bottom
 
-            if (this.hitRect(xChanged, p)) {
+            if (desDir == this.vel.x / Math.abs(this.vel.x) && this.hitRect(xChanged, p)) { //To hit off the side, must be moving in the right direction
                 if ((desDir == -1 && this.pos.x > p.pos.x + (p.width * .25)) || //It will only bounce off the front quarter of the paddle
                     desDir == 1 && this.pos.x + this.width < p.pos.x + (p.width * .75)) {
-                    const horzDist = (this.pos.y + this.height / 2) - (p.pos.y + p.height / 2);
+                    const horzDist = (this.pos.y + this.height / 2) - (p.pos.y + p.height / 2); //Calculations for the angle it should reflect off based on where it hits the paddle
                     const maxDist = (p.height / 2) + (this.height / 2);
                     const ang = (horzDist / maxDist) * this.maxAng;
-                    this.vel.set(Math.cos(ang) * this.speed * -desDir, Math.sin(ang) * this.speed);
+                    this.vel.set(Math.cos(ang) * this.speed * -desDir, Math.sin(ang) * this.speed); //Reflect at that angle
+                    hasBounced = true;
                 }
             }
-            if (this.hitRect(yChanged, p)) {
+            if (this.hitRect(yChanged, p)) { //If it is bouncing off the top/bottom
                 if (this.pos.y + this.height / 2 > p.pos.y + p.height / 2) { //If its hitting the bottom
-                    this.vel.y = Math.abs(this.vel.y); //Mkae it bounce down
+                    this.vel.y = Math.abs(this.vel.y); //Make it bounce down
+                    hasBounced = true;
                     if (p.down) { //If paddle is moving up, bounce it up more
                         const nextPos = new Vector(this.pos.x + this.vel.x, this.pos.y + this.vel.y);
                         if (this.hitRect(nextPos, nextPos, p.width, p.height)) {
-                            this.pos.y += p.speed;
-                            this.vel.y *= 1.3;
+                            this.pos.y += (p.speed * deltaTime); //Push the ball down
+
+                            this.vel.set(this.vel.x, this.vel.y * 1.3);
+                            this.speed *= 1.1;
                         }
                     }
-                } else { //If its hitting the top, make it bounce up
-                    this.vel.y = -Math.abs(this.vel.y);
+                } else { //If its hitting the top
+                    this.vel.y = -Math.abs(this.vel.y); //make it bounce up
+                    hasBounced = true;
                     if (p.up) {
                         const nextPos = new Vector(this.pos.x - this.vel.x, this.pos.y + this.vel.y);
                         if (this.hitRect(nextPos, nextPos, p.width, p.height)) {
-                            this.pos.y -= p.speed;
-                            this.vel.y *= 1.3;
+                            this.pos.y -= (p.speed * deltaTime); //Push the ball up
+
+                            this.vel.set(this.vel.x, this.vel.y * 1.3);
+                            this.speed *= 1.1;
+
+                            console.log("speed up");
                         }
                     }
                 }
             }
         }
+        return hasBounced;
+    }
+
+    hitPowerup(p) {
+        return this.hitRect(this.pos, p.pos, p.width, p.height);
     }
 
     hitRect(pos, p, w, h) {
@@ -203,6 +237,113 @@ class Ball {
             'name': 'ball',
             'x': this.pos.x,
             'y': this.pos.y,
+            'vx': this.vel.x,
+            'vy': this.vel.y,
+            'width': this.width,
+            'height': this.height,
+            'speed': this.speed
+        };
+    }
+}
+
+class Fireball {
+    constructor(pos, dir) {
+        this.width = 40;
+        this.height = 40;
+        this.rot = 0;
+        this.lastRot = 0;
+        this.pos = new Vector(pos.x, pos.y - (this.height / 2));
+        if (dir == -1) this.pos.x -= this.width;
+        this.speed = .25;
+        this.vel = new Vector(dir * this.speed * .5, this.speed * 0.866); //The ball at a -60° ang
+    }
+
+    fixMag() {
+        this.vel.setMag(this.speed);
+    }
+
+    update(p1, p2) {
+        let hitPlayer = -1;
+
+        this.vel.setMag(deltaTime * this.speed);
+        this.pos.add(this.vel);
+
+        this.bounceWalls();
+        this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
+        if (p1.powerup != "dead" && this.hitPaddle(p1)) hitPlayer = 0;
+        if (p2.powerup != "dead" && this.hitPaddle(p2)) hitPlayer = 1;
+
+        if (this.lastRot > 4) {
+            this.rot = (this.rot + 1) % 4;
+            this.lastRot = 0;
+        }
+
+        this.lastRot++;
+        return hitPlayer;
+    }
+
+    shouldDestroy() {
+        return (this.pos.x < -this.width || this.pos.x > WIDTH);
+    }
+
+    bounceWalls() { //Bounce off floor and ceiling
+        if ((this.pos.y <= 0 && this.vel.y < 0) || (this.pos.y >= HEIGHT - this.height && this.vel.y > 0)) {
+            this.vel.y *= -1;
+        }
+    }
+
+    hitPaddle(p) {
+        return this.hitRect(this.pos, p);
+
+    }
+
+    hitRect(pos, p, w, h) {
+        if (p instanceof Player) {
+            return (pos.x + this.width >= p.pos.x && pos.x <= p.pos.x + p.width && //Is inbtwn left and right of paddle
+                pos.y + this.height >= p.pos.y && pos.y <= p.pos.y + p.height) //Is inbtwn top and bottom of paddle
+        } else {
+            return (pos.x + this.width >= p.x && pos.x <= p.x + w && //Is inbtwn left and right of paddle
+                pos.y + this.height >= p.y && pos.y <= p.y + h) //Is inbtwn top and bottom of paddle
+        }
+    }
+
+    serialize() {
+        return {
+            'name': 'fireball',
+            'x': this.pos.x,
+            'y': this.pos.y,
+            'vx': this.vel.x,
+            'vy': this.vel.y,
+            'width': this.width,
+            'height': this.height,
+            'speed': this.speed,
+            'extra': {
+                'rot': this.rot
+            }
+        };
+    }
+}
+
+class Powerup {
+    constructor(name, pos) {
+        this.name = name;
+        this.collected = false;
+        if (name == "Fire") {
+            this.width = 41.6;
+            this.height = 40;
+        }
+
+        if (pos == "center") {
+            this.pos = new Vector(WIDTH / 2 - this.width / 2, HEIGHT / 2 - this.height / 2);
+        }
+    }
+
+    serialize() {
+        return {
+            'name': this.name,
+            'collected': this.collected,
+            'x': this.pos.x,
+            'y': this.pos.y,
             'width': this.width,
             'height': this.height
         };
@@ -215,6 +356,8 @@ class Player {
         this.score = 0;
         this.width = 20;
         this.height = 50;
+        this.powerup = null;
+
         if (this.aOrB == 'A') { //Mario dimensions
             this.displayWidth = 24;
             this.displayHeight = 50;
@@ -233,27 +376,46 @@ class Player {
         this.speed = .4; //Vertical movement speed
     }
 
-    reset() {
-        this.pos.y = HEIGHT / 2 - (this.height / 2);
-        this.up = false;
-        this.down = false;
+    setPowerup(p) {
+        this.powerup = p.name;
     }
 
+    reset() {
+        this.powerup = null;
+        // this.pos.y = HEIGHT / 2 - (this.height / 2);
+        // this.up = false;
+        // this.down = false;
+    }
 
     setY(y) {
+        if (y < this.pos.y) this.up = true; //If the player is moving, set these to true, so the ball bounces correctly
+        else if (y > this.pos.y) this.down = true;
+        else {
+            this.up = false;
+            this.down = false;
+        }
+
         this.pos.y = y;
+        this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position again, just incase!
+    }
+
+    hit() {
+        this.powerup = "dead";
     }
 
     serialize() {
         this.modX = this.pos.x;
         if (this.aOrB == 'A') this.modX += 3; //Acounting for the different transparency in each sprite
         else this.modX -= 7;
+        let name = 'player' + this.aOrB;
+        if (this.powerup == "Fire") name += "Fire";
         return {
-            'name': 'player' + this.aOrB,
+            'name': name,
             'x': this.modX,
             'y': this.pos.y,
             'width': this.displayWidth,
-            'height': this.displayHeight
+            'height': this.displayHeight,
+            'powerup': this.powerup
         };
     }
 }
@@ -262,17 +424,25 @@ class Game {
     constructor() {
         this.players = [new Player('A'), new Player('B')];
         this.ball = new Ball(8, 8);
+        this.fireballs = [];
+
+        this.lastPlayerHit = -1;
+        this.powerups = [new Powerup("Fire", "center")];
+
+
         this.countingDown = true;
         this.countdownTime = 3;
-        this.countdownText = new Text("3", WIDTH / 2, HEIGHT / 2, 70);
+        this.countdownText = new Text("3", WIDTH / 2, HEIGHT * .25, 70);
         this.countdownInterval;
         this.beginCountdown();
-        this.winnerText = new Text("WINS!", WIDTH / 2, HEIGHT / 2, 70);
+
+        this.winnerText = new Text("WINS!", WIDTH / 2, HEIGHT * .25, 70);
         this.showingWinner = false;
         this.gameHasEnded = false;
     }
 
     beginCountdown() {
+        this.ball.vel.mult(0); //Stop ball moving during countdown
         this.countdownInterval = setInterval(() => { //Display Countdown for 3 seconds
             this.countdownTime--;
             this.countdownText.text = this.countdownTime > 0 ? this.countdownTime : "START";
@@ -287,12 +457,35 @@ class Game {
     }
 
     resetGame() {
+        this.lastPlayerHit = -1;
+        this.fireballs = [];
+        this.players[0].reset();
+        this.players[1].reset();
         this.ball.reset();
     }
 
     update() {
         if (!this.countingDown && !this.showingWinner) {
-            this.ball.update(this.players[0], this.players[1]);
+            const bouncedOff = this.ball.update(this.players[0], this.players[1]);
+
+            for (let i = this.fireballs.length - 1; i >= 0; i--) {
+                const fireball = this.fireballs[i];
+                if (fireball.shouldDestroy()) {
+                    this.fireballs.splice(i, 1);
+                } else {
+                    const hit = fireball.update(this.players[0], this.players[1]);
+                    if (hit > -1) this.players[hit].hit();
+                }
+            }
+
+            if (bouncedOff > -1) this.lastPlayerHit = bouncedOff;
+            for (let powerup of this.powerups) {
+                if (!powerup.collected && this.ball.hitPowerup(powerup) && this.lastPlayerHit > -1) {
+                    powerup.collected = true;
+                    this.players[this.lastPlayerHit].setPowerup(powerup);
+                    console.log(`Player ${this.lastPlayerHit} got a powerup!`);
+                }
+            }
         }
         const scored = this.ball.checkScore();
 
@@ -313,21 +506,22 @@ class Game {
             }
         }
 
+        let movingSprites = [];
+        if (!this.countingDown && !this.showingWinner) movingSprites.push(this.ball.serialize());
+        movingSprites = movingSprites.concat(this.fireballs.map(f => f.serialize()));
+
         const gameData = {
             "sprites": [
-                this.ball.serialize(),
-                this.players[0].serialize(),
+                this.players[0].serialize(), //Make sure the players stay in this order!
                 this.players[1].serialize()
             ],
             "score": [this.players[0].score, this.players[1].score],
+            "powerups": this.powerups.map(p => p.serialize()),
+            "movingSprites": movingSprites,
             "text": []
         };
-        if (this.countingDown) {
-            gameData.text.push(this.countdownText.serialize());
-        }
-        if (this.showingWinner) {
-            gameData.text.push(this.winnerText.serialize());
-        }
+        if (this.countingDown) gameData.text.push(this.countdownText.serialize());
+        if (this.showingWinner) gameData.text.push(this.winnerText.serialize());
 
         return gameData;
     }
@@ -347,11 +541,26 @@ class Game {
         }
     }
 
+    shoot(pIndex) {
+        if (this.fireballs.length < 3) {
+            const dir = (pIndex == 0) ? 1 : -1;
+            let pos = this.players[pIndex].pos.copy();
+            if (pIndex == 0) {
+                pos.x += this.players[pIndex].width; //Player on the left spawns it in front
+            }
+            pos.y += this.players[pIndex].height / 2;
+            const fireball = new Fireball(pos, dir);
+            this.fireballs.push(fireball);
+        }
+    }
+
     inp(pIndex, data) {
         switch (data.type) {
             case "yPos":
                 this.players[pIndex].setY(data.data);
                 break;
+            case "shoot":
+                this.shoot(pIndex);
         }
     }
 }
@@ -403,7 +612,7 @@ class Room {
     }
 
     contains(id) {
-        return (room.clientASocket.id == id || room.clientBSocket.id == id)
+        return (this.clientASocket.id == id || this.clientBSocket.id == id);
     }
 
     recievedInp(id, data) {
@@ -420,7 +629,7 @@ function addToQueue(socket) {
             socket.emit('status', 'waiting');
 
             let ids = [];
-            for (s of clientsQueue) ids.push(s.id);
+            for (let s of clientsQueue) ids.push(s.id);
 
             console.log(`Queue: ${ids}`);
         }
@@ -429,7 +638,7 @@ function addToQueue(socket) {
             rooms.push(room);
 
             let ids = [];
-            for (s of clientsQueue) ids.push(s.id);
+            for (let s of clientsQueue) ids.push(s.id);
 
             console.log(`Queue Cleared: ${ids}`);
             clientsQueue.splice(0, 2);
@@ -438,7 +647,7 @@ function addToQueue(socket) {
 }
 
 function roomOf(socket) {
-    for (room of rooms) {
+    for (let room of rooms) {
         if (room.contains(socket.id)) {
             return room;
         }
@@ -455,11 +664,6 @@ io.sockets.on('connection', socket => {
 
     socket.on('addToQueue', () => {
         addToQueue(socket);
-        // io.sockets.connected[socket.id].emit('status', 'waiting');
-    });
-
-    socket.on('pauseToDebug', () => {
-        console.log("Debug!");
     });
 
     socket.on('yPos', y => {
@@ -468,6 +672,16 @@ io.sockets.on('connection', socket => {
             const data = {
                 type: 'yPos',
                 data: y
+            }
+            room.recievedInp(socket.id, data);
+        }
+    });
+
+    socket.on('shoot', () => {
+        const room = roomOf(socket);
+        if (room != false) {
+            const data = {
+                type: 'shoot'
             }
             room.recievedInp(socket.id, data);
         }
@@ -494,7 +708,7 @@ function gameLoop() {
     if (now >= nextTime) {
         deltaTime = now - lastFrameTime;
         lastFrameTime = now;
-        for (room of rooms) {
+        for (let room of rooms) {
             room.update();
         }
         nextTime = now + fps;
