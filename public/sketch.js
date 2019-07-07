@@ -33,7 +33,7 @@ let gameData = null;
 
 let deltaTime = 0;
 let lastFrameTime = Date.now();
-
+//TODO Fix glitch where fireballs try to move during countdown
 function setup() {
     function loaded() {
         amtLoaded++;
@@ -81,7 +81,7 @@ function setup() {
     for (name of spriteNames) {
         sprites[name] = loadImage(`sprites/${name}.png`, loaded); //Load all of the sprites
     }
-    font = loadFont("prstartk.TTF", () => {
+    font = loadFont("sprites/prstartk.TTF", () => {
         textFont(font);
         loaded();
     });
