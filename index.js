@@ -117,7 +117,6 @@ class Ball {
         let ang = (Math.random() * (this.maxAng * 2)) - (this.maxAng);
         if (Math.random() < .5) ang += Math.PI;
 
-        ang = 0; //TODO REMOVE this
         this.vel = new Vector(Math.cos(ang) * this.speed, Math.sin(ang) * this.speed);
         this.prevPos = this.pos.copy();
         this.prevVel = new Vector();
@@ -459,6 +458,7 @@ class Game {
     resetGame() {
         this.lastPlayerHit = -1;
         this.fireballs = [];
+        this.powerups = [new Powerup("Fire", "center")];
         this.players[0].reset();
         this.players[1].reset();
         this.ball.reset();
