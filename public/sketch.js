@@ -313,6 +313,8 @@ class Player {
         this.powerup = p;
         this.nameWithPowerup = this.name;
         if (this.powerup == "Fire") this.nameWithPowerup += "Fire";
+        if (this.powerup == "dead") this.pos.y = (origHeight / 2) - (this.height / 2); //Reset pos if you die
+
     }
 
     show() {
