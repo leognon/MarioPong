@@ -447,8 +447,7 @@ class Game {
         this.countdownText = new Text("3", WIDTH / 2, HEIGHT * .25, 70);
         this.countdownInterval;
         this.beginCountdown();
-
-        this.winnerText = new Text("WINS!", WIDTH / 2, HEIGHT * .25, 70);
+        this.winnerText = new Text("WINS!", WIDTH / 2, HEIGHT * .25, 40);
         this.showingWinner = false;
         this.gameHasEnded = false;
     }

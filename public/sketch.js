@@ -197,11 +197,9 @@ function renderGame() {
             if (txt.text == "START") txt.text = `START`;
             if (txt.text[0] = "W") { //If the text is saying the winner
                 if (txt.text[1] == "M") { //If mario won
-                    textSize(40);
                     if (marioOrYoshi == "Mario") txt.text = "Congratulations!\nMario Wins!";
-                    else txt.text = "Game Over\nMario Wins"; //TODO Text is not completely centered with the \n
+                    else txt.text = "Game Over\nMario Wins";
                 } else if (txt.text[1] == "Y") { //If yoshi won
-                    textSize(40);
                     if (marioOrYoshi == "Mario") txt.text = "Game Over\nYoshi Wins";
                     else txt.text = "Congratulations!\nYoshi Wins!";
                 }
