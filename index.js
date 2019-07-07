@@ -304,19 +304,16 @@ class Fireball {
         this.vel.mult(0);
     }
 
-    hitPaddle(p) {
-        return this.hitRect(this.pos, p);
-
+    hitPaddle(p) { //Notice this.width is * .3, this makes collision slightly nicer
+        return this.circleToRect(this.pos.x, this.pos.y, this.width * .3, p.pos.x, p.pos.y, p.width, p.height);
     }
 
-    hitRect(pos, p, w, h) {
-        if (p instanceof Player) {
-            return (pos.x + this.width >= p.pos.x && pos.x <= p.pos.x + p.width && //Is inbtwn left and right of paddle
-                pos.y + this.height >= p.pos.y && pos.y <= p.pos.y + p.height) //Is inbtwn top and bottom of paddle
-        } else {
-            return (pos.x + this.width >= p.x && pos.x <= p.x + w && //Is inbtwn left and right of paddle
-                pos.y + this.height >= p.y && pos.y <= p.y + h) //Is inbtwn top and bottom of paddle
-        }
+    circleToRect(cx, cy, cr, rx, ry, rw, rh) {
+        const closestX = Math.min(Math.max(rx, cx), rx + rw);
+        const closestY = Math.min(Math.max(ry, cy), ry + rh);
+        const xDist = cx - closestX;
+        const yDist = cy - closestY;
+        return (xDist * xDist + yDist * yDist < cr * cr);
     }
 
     serialize() {
