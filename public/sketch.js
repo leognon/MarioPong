@@ -81,7 +81,7 @@ function setup() {
     for (name of spriteNames) {
         sprites[name] = loadImage(`sprites/${name}.png`, loaded); //Load all of the sprites
     }
-    font = loadFont("sprites/prstartk.TTF", () => {
+    font = loadFont("sprites/prstartk.otf", () => {
         textFont(font);
         loaded();
     });
