@@ -125,7 +125,7 @@ class Ball {
         let ang = (Math.random() * (this.maxAng * 2)) - (this.maxAng);
         if (Math.random() < .5) ang += Math.PI;
 
-        ang = 0; //TODO REMOVE this
+        ang = Math.PI + .03; //TODO REMOVE this
         this.vel = new Vector(Math.cos(ang) * this.speed, Math.sin(ang) * this.speed);
         this.prevPos = this.pos.copy();
         this.prevVel = new Vector();
@@ -340,10 +340,20 @@ class Powerup {
         if (name == "Fire") {
             this.width = 41.6;
             this.height = 40;
+        } else if (name == "Big") {
+            this.width = 43.2;
+            this.height = 36.8;
+        } else if (name == "Small") {
+            this.width = 41.4;
+            this.height = 39.6;
         }
 
         if (pos == "center") {
-            this.pos = new Vector(WIDTH / 2 - this.width / 2, HEIGHT / 2 - this.height / 2);
+            this.pos = new Vector((WIDTH / 2) - (this.width / 2), (HEIGHT / 2) - (this.height / 2));
+        } else if (pos == "left") {
+            this.pos = new Vector((WIDTH / 3) - (this.width / 2), (HEIGHT / 3) - (this.height / 2));
+        } else if (pos == "right") {
+            this.pos = new Vector((WIDTH * 2 / 3) - (this.width / 2), (HEIGHT * 2 / 3) - (this.height / 2));
         }
     }
 
@@ -363,18 +373,26 @@ class Player {
     constructor(aOrB) {
         this.aOrB = aOrB;
         this.score = 0;
-        this.width = 20;
-        this.height = 50;
+        this.baseWidth = 20;
+        this.baseHeight = 50;
+
+        this.width = this.baseWidth;
+        this.height = this.baseHeight;
+
+        this.sizeMult = 1;
         this.powerup = null;
 
         if (this.aOrB == 'A') { //Mario dimensions
-            this.displayWidth = 24;
-            this.displayHeight = 50;
+            this.baseDisplayHeight = this.height;
+            this.baseDisplayWidth = this.baseDisplayHeight * (12 / 25);
         }
         if (this.aOrB == 'B') { //Yoshi dimensions
-            this.displayWidth = 34;
-            this.displayHeight = 50;
+            this.baseDisplayHeight = this.height;
+            this.baseDisplayWidth = this.baseDisplayHeight * (11 / 16);
         }
+        this.displayWidth = this.baseDisplayWidth;
+        this.displayHeight = this.baseDisplayHeight;
+
         let xPos = 40;
         if (this.aOrB == 'B') {
             xPos = WIDTH - this.width - 40;
@@ -387,13 +405,54 @@ class Player {
 
     setPowerup(p) {
         this.powerup = p.name;
+        if (this.powerup == "Big") {
+            const oldSizeMult = this.sizeMult;
+            this.sizeMult = 1.3;
+
+            this.width = this.baseWidth * this.sizeMult;
+            this.height = this.baseHeight * this.sizeMult;
+            this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+            this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+
+            if (this.aOrB == 'A') {
+                this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+            } else if (this.aOrB == 'B') {
+                this.pos.x = WIDTH - (40 + (this.baseWidth * this.sizeMult));
+            }
+            this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+        } else if (this.powerup == "Small") {
+            const oldSizeMult = this.sizeMult;
+            this.sizeMult = .8;
+            this.width = this.baseWidth * this.sizeMult;
+            this.height = this.baseHeight * this.sizeMult;
+            this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+            this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+
+            if (this.aOrB == 'A') {
+                this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+            } else if (this.aOrB == 'B') {
+                this.pos.x = WIDTH - (40 + (this.baseWidth * this.sizeMult));
+            }
+            this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+        }
     }
 
     reset() {
         this.powerup = null;
-        // this.pos.y = HEIGHT / 2 - (this.height / 2);
-        // this.up = false;
-        // this.down = false;
+
+        const oldSizeMult = this.sizeMult; //Reset the size
+        this.sizeMult = 1;
+        this.width = this.baseWidth;
+        this.height = this.baseHeight;
+        this.displayWidth = this.baseDisplayWidth;
+        this.displayHeight = this.baseDisplayHeight;
+
+        if (this.aOrB == 'A') {
+            this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+        } else if (this.aOrB == 'B') {
+            this.pos.x = WIDTH - (40 + (this.baseWidth * this.sizeMult));
+        }
+        this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
     }
 
     setY(y) {
@@ -414,8 +473,8 @@ class Player {
 
     serialize() {
         this.modX = this.pos.x;
-        if (this.aOrB == 'A') this.modX += 3; //Acounting for the different transparency in each sprite
-        else this.modX -= 7;
+        if (this.aOrB == 'A') this.modX += (this.displayWidth / 6);
+        if (this.aOrB == 'B') this.modX -= (this.displayWidth * .25); //Move yoshi over so it displayes in the correct place
         let name = 'player' + this.aOrB;
         if (this.powerup == "Fire") name += "Fire";
         return {
@@ -436,20 +495,47 @@ class Game {
         this.fireballs = [];
 
         this.lastPlayerHit = -1;
-        this.powerups = [new Powerup("Fire", "center")];
+        this.powerups = [];
 
+        this.amtOfRoundTypes = 2;
+        this.unusedRounds = [];
 
         this.countingDown = true;
         this.countdownTime = 3;
         this.countdownText = new Text("3", WIDTH / 2, HEIGHT * .25, 70);
         this.countdownInterval;
-        this.beginCountdown();
+
         this.winnerText = new Text("WINS!", WIDTH / 2, HEIGHT * .25, 40);
         this.showingWinner = false;
         this.gameHasEnded = false;
+
+        this.initNextRound(true); //Creates the first round
+        this.beginCountdown(true); //Starts a countdown, without changing the first round
     }
 
-    beginCountdown() {
+    initNextRound(firstRound = false) {
+        if (!firstRound) this.resetGame();
+        if (this.unusedRounds.length <= 0)
+            for (let i = 0; i < this.amtOfRoundTypes; i++) this.unusedRounds.push(i); //Makes an array with the possible rounds
+
+        //Picks and removes a random round
+        //TODO DON'T MAKE ROUND ALWAYS SET TO THE SAME THING!
+        const round = 1; //this.unusedRounds.splice(Math.floor(Math.random(this.unusedRounds.lenght)), 1)[0]; 
+
+        switch (round) {
+            case 0:
+                this.powerups = [new Powerup("Fire", "center")];
+                break;
+            case 1:
+                this.powerups = [
+                    new Powerup("Big", "left"),
+                    new Powerup("Small", "right")
+                ];
+                break;
+        }
+    }
+    //TODO Fix fireballs sometimes flashing during countdown (It's been happening with lots of objects)
+    beginCountdown(firstRound = false) {
         this.fireballs.map(f => f.stopMoving()); //Stop fireballs from moving
         this.ball.vel.mult(0); //Stop ball moving during countdown
         this.countdownInterval = setInterval(() => { //Display Countdown for 3 seconds
@@ -460,7 +546,9 @@ class Game {
                 this.countdownTime = 3;
                 this.countdownText.text = "3"; //Reset countdown stuff
                 this.countingDown = false;
-                this.resetGame();
+                if (!firstRound) this.initNextRound(); //Only create a new round if its not the first
+                else this.ball.reset(); //If its the first round, just reset some the ball
+                console.log("starting game");
             }
         }, 1000);
     }
@@ -468,9 +556,12 @@ class Game {
     resetGame() {
         this.lastPlayerHit = -1;
         this.fireballs = [];
+        this.powerups = [];
+
         this.players[0].reset();
         this.players[1].reset();
         this.ball.reset();
+        console.log("Game Reset");
     }
 
     update() {
@@ -582,8 +673,8 @@ class Room {
         this.clientASocket = a;
         this.clientBSocket = b;
         this.game = new Game();
-        console.log("Joining room");
         this.joinRoom();
+        console.log("Joined room");
     }
 
     update() {

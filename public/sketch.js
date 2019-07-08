@@ -18,6 +18,8 @@ const spriteNames = [
     'ball',
     'fireball',
     'fireflower',
+    'big',
+    'small',
     'powerupBorder',
     'divider'
 ];
@@ -33,8 +35,9 @@ let gameData = null;
 
 let deltaTime = 0;
 let lastFrameTime = Date.now();
-//TODO Fix glitch where fireballs try to move during countdown
+
 function setup() {
+    // frameRate(30); //TODO REMOVE THIS!!! NOT MEANT FOR ACTUAL BUILDS!
     function loaded() {
         amtLoaded++;
         if (amtLoaded >= totalToLoad) { //Once assets have loaded, connect to the server
@@ -169,6 +172,8 @@ function renderGame() {
             if (!powerup.collected) {
                 let name;
                 if (powerup.name == "Fire") name = "fireflower";
+                if (powerup.name == "Big") name = "big";
+                if (powerup.name == "Small") name = "small";
                 image(sprites[name], powerup.x, powerup.y, powerup.width, powerup.height);
             }
         }
@@ -279,18 +284,26 @@ class Player {
         this.aOrB = aOrB;
         this.name = `player${this.aOrB}`;
         this.nameWithPowerup = this.name;
-        this.width = 20;
-        this.height = 50;
+        this.baseWidth = 20;
+        this.baseHeight = 50;
+
+        this.width = this.baseWidth;
+        this.height = this.baseHeight;
+
+        this.sizeMult = 1;
         this.powerup = null;
 
         if (this.aOrB == 'A') { //Mario dimensions
-            this.displayWidth = 24;
-            this.displayHeight = 50;
+            this.baseDisplayHeight = this.height;
+            this.baseDisplayWidth = this.baseDisplayHeight * (12 / 25);
         }
         if (this.aOrB == 'B') { //Yoshi dimensions
-            this.displayWidth = 34;
-            this.displayHeight = 50;
+            this.baseDisplayHeight = this.height;
+            this.baseDisplayWidth = this.baseDisplayHeight * (11 / 16);
         }
+        this.displayWidth = this.baseDisplayWidth;
+        this.displayHeight = this.baseDisplayHeight;
+
         let xPos = 40;
         if (this.aOrB == 'B') {
             xPos = origWidth - this.width - 40;
@@ -310,18 +323,67 @@ class Player {
     }
 
     setPowerup(p) {
-        this.powerup = p;
-        this.nameWithPowerup = this.name;
-        if (this.powerup == "Fire") this.nameWithPowerup += "Fire";
-        if (this.powerup == "dead") this.pos.y = (origHeight / 2) - (this.height / 2); //Reset pos if you die
+        if (p != this.powerup) {
+            this.powerup = p;
+            this.nameWithPowerup = this.name;
+            if (this.powerup == "Fire") this.nameWithPowerup += "Fire";
+            else if (this.powerup == "dead") this.pos.y = (origHeight / 2) - (this.height / 2); //Reset pos if you die
+            else if (this.powerup == "Big") {
+                const oldSizeMult = this.sizeMult;
+                this.sizeMult = 1.3;
 
+                this.width = this.baseWidth * this.sizeMult;
+                this.height = this.baseHeight * this.sizeMult;
+                this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+                this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+
+                if (this.aOrB == 'A') {
+                    this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+                } else if (this.aOrB == 'B') {
+                    this.pos.x = origWidth - (40 + (this.baseWidth * this.sizeMult));
+                }
+                this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+            } else if (this.powerup == "Small") {
+                const oldSizeMult = this.sizeMult;
+                this.sizeMult = .8;
+                this.width = this.baseWidth * this.sizeMult;
+                this.height = this.baseHeight * this.sizeMult;
+                this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+                this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+
+                if (this.aOrB == 'A') {
+                    this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+                } else if (this.aOrB == 'B') {
+                    this.pos.x = origWidth - (40 + (this.baseWidth * this.sizeMult));
+                }
+                this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+            }
+            if (this.powerup != "Big" && this.powerup != "Small") {
+                const oldSizeMult = this.sizeMult; //Reset the size
+                this.sizeMult = 1;
+                this.width = this.baseWidth;
+                this.height = this.baseHeight;
+                this.displayWidth = this.baseDisplayWidth;
+                this.displayHeight = this.baseDisplayHeight;
+
+                if (this.aOrB == 'A') {
+                    this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+                } else if (this.aOrB == 'B') {
+                    this.pos.x = origWidth - (40 + (this.baseWidth * this.sizeMult));
+                }
+                this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+            }
+        }
     }
 
     show() {
         //Accounts for different transparency in each sprite
         if (this.powerup == "dead") return;
-        if (this.aOrB == 'A') image(sprites[this.nameWithPowerup], this.pos.x + 3, this.pos.y, this.displayWidth, this.displayHeight);
-        else if (this.aOrB == 'B') image(sprites[this.nameWithPowerup], this.pos.x - 7, this.pos.y, this.displayWidth, this.displayHeight);
+        else if (this.aOrB == 'A') //TODO Aren't the hitboxes innacurate? There is hitbox behind them
+            image(sprites[this.nameWithPowerup], this.pos.x + (this.displayWidth / 6), this.pos.y, this.displayWidth, this.displayHeight);
+        else if (this.aOrB == 'B')
+            image(sprites[this.nameWithPowerup], this.pos.x - (this.displayWidth * .25), this.pos.y, this.displayWidth, this.displayHeight);
+
     }
 
     reset() {
@@ -332,8 +394,8 @@ class Player {
 
     update() {
         if (this.powerup != "dead") {
-            if (this.up) this.pos.y -= (this.speed * deltaTime); //Move up
-            if (this.down) this.pos.y += (this.speed * deltaTime); //Move down
+            if (this.up) this.pos.y -= (this.speed * deltaTime / this.sizeMult); //Move up
+            if (this.down) this.pos.y += (this.speed * deltaTime / this.sizeMult); //Move down
             this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position
         }
         if (this.pos.y != this.prevY) { //If the player has moved, send position to server
