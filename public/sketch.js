@@ -17,6 +17,7 @@ const spriteNames = [
     'playerBFire',
     'ball',
     'fireball',
+    'shell',
     'fireflower',
     'big',
     'small',
@@ -37,7 +38,6 @@ let deltaTime = 0;
 let lastFrameTime = Date.now();
 
 function setup() {
-    // frameRate(30); //TODO REMOVE THIS!!! NOT MEANT FOR ACTUAL BUILDS!
     function loaded() {
         amtLoaded++;
         if (amtLoaded >= totalToLoad) { //Once assets have loaded, connect to the server
@@ -379,7 +379,7 @@ class Player {
     show() {
         //Accounts for different transparency in each sprite
         if (this.powerup == "dead") return;
-        else if (this.aOrB == 'A') //TODO Aren't the hitboxes innacurate? There is hitbox behind them
+        else if (this.aOrB == 'A')
             image(sprites[this.nameWithPowerup], this.pos.x + (this.displayWidth / 6), this.pos.y, this.displayWidth, this.displayHeight);
         else if (this.aOrB == 'B')
             image(sprites[this.nameWithPowerup], this.pos.x - (this.displayWidth * .25), this.pos.y, this.displayWidth, this.displayHeight);
