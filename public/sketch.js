@@ -309,7 +309,7 @@ class Player {
             xPos = origWidth - this.width - 40;
         }
         this.pos = new Vector(xPos, (origHeight / 2) - (this.height / 2)); //The x and y of the top right corner of the paddle
-        this.prevY = undefined;
+        this.prevPos = new Vector();
         this.up = false; //Is the up key pressed
         this.down = false; //Is the down key pressed
         this.speed = .4; //Vertical movement speed
@@ -398,12 +398,20 @@ class Player {
             if (this.down) this.pos.y += (this.speed * deltaTime / this.sizeMult); //Move down
             this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position
         }
-        if (this.pos.y != this.prevY) { //If the player has moved, send position to server
-            socket.emit('yPos', this.pos.y);
-            this.prevY = this.pos.y;
+        if (this.pos.x != this.prevPos.x || this.pos.y != this.prevPos.y) { //If the player has moved, send position to server
+            const data = {
+                'x': this.pos.x,
+                'y': this.pos.y
+            }
+            socket.emit('pos', data);
+            this.prevPos = this.pos.copy();
             this.sentNotMoving = false;
         } else if (!this.sentNotMoving) {
-            socket.emit('yPos', this.pos.y); //When we stop moving, emit the pos one more time so the server knows
+            const data = {
+                'x': this.pos.x,
+                'y': this.pos.y
+            }
+            socket.emit('pos', data); //When we stop moving, emit the pos one more time so the server knows
             this.sentNotMoving = true;
         }
     }

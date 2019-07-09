@@ -408,34 +408,18 @@ class Player {
     setPowerup(p) {
         this.powerup = p.name;
         if (this.powerup == "Big") {
-            const oldSizeMult = this.sizeMult;
             this.sizeMult = 1.3;
 
             this.width = this.baseWidth * this.sizeMult;
             this.height = this.baseHeight * this.sizeMult;
             this.displayWidth = this.baseDisplayWidth * this.sizeMult;
             this.displayHeight = this.baseDisplayHeight * this.sizeMult;
-
-            if (this.aOrB == 'A') {
-                this.pos.x = 40 - (this.baseWidth / this.sizeMult);
-            } else if (this.aOrB == 'B') {
-                this.pos.x = WIDTH - (40 + (this.baseWidth * this.sizeMult));
-            }
-            this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
         } else if (this.powerup == "Small") {
-            const oldSizeMult = this.sizeMult;
             this.sizeMult = .8;
             this.width = this.baseWidth * this.sizeMult;
             this.height = this.baseHeight * this.sizeMult;
             this.displayWidth = this.baseDisplayWidth * this.sizeMult;
             this.displayHeight = this.baseDisplayHeight * this.sizeMult;
-
-            if (this.aOrB == 'A') {
-                this.pos.x = 40 - (this.baseWidth / this.sizeMult);
-            } else if (this.aOrB == 'B') {
-                this.pos.x = WIDTH - (40 + (this.baseWidth * this.sizeMult));
-            }
-            this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
         }
     }
 
@@ -457,16 +441,17 @@ class Player {
         this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
     }
 
-    setY(y) {
-        if (y < this.pos.y) this.up = true; //If the player is moving, set these to true, so the ball bounces correctly
-        else if (y > this.pos.y) this.down = true;
+    setPos(p) {
+        if (p.y < this.pos.y) this.up = true; //If the player is moving, set these to true, so the ball bounces correctly
+        else if (p.y > this.pos.y) this.down = true;
         else {
             this.up = false;
             this.down = false;
         }
 
-        this.pos.y = y;
+        this.pos.y = p.y;
         this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position again, just incase!
+        this.pos.x = p.x;
     }
 
     hit() {
@@ -659,8 +644,8 @@ class Game {
 
     inp(pIndex, data) {
         switch (data.type) {
-            case "yPos":
-                this.players[pIndex].setY(data.data);
+            case "pos":
+                this.players[pIndex].setPos(data.data);
                 break;
             case "shoot":
                 this.shoot(pIndex);
@@ -769,12 +754,12 @@ io.sockets.on('connection', socket => {
         addToQueue(socket);
     });
 
-    socket.on('yPos', y => {
+    socket.on('pos', pos => {
         const room = roomOf(socket);
         if (room != false) {
             const data = {
-                type: 'yPos',
-                data: y
+                type: 'pos',
+                data: pos
             }
             room.recievedInp(socket.id, data);
         }
