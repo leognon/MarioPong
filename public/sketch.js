@@ -498,7 +498,7 @@ class Vector {
 
     setMag(m) {
         const currMagSq = (this.x * this.x) + (this.y * this.y);
-        if (m * m != currMagSq) {
+        if (currMagSq > 0 && m * m != currMagSq) {
             const currMag = Math.sqrt(currMagSq);
             this.x = (this.x / currMag) * m;
             this.y = (this.y / currMag) * m;

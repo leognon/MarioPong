@@ -75,7 +75,7 @@ class Vector {
 
     setMag(m) {
         const currMagSq = (this.x * this.x) + (this.y * this.y);
-        if (m * m != currMagSq) {
+        if (currMagSq > 0 && m * m != currMagSq) {
             const currMag = Math.sqrt(currMagSq);
             this.x = (this.x / currMag) * m;
             this.y = (this.y / currMag) * m;
@@ -304,16 +304,18 @@ class Fireball {
         this.vel.mult(0);
     }
 
-    hitPaddle(p) { //Notice this.width is * .3, this makes collision slightly nicer
-        return this.circleToRect(this.pos.x, this.pos.y, this.width * .3, p.pos.x, p.pos.y, p.width, p.height);
+    hitPaddle(p) {
+        return this.circleToRect(this.pos.x, this.pos.y, this.width * .5, p.pos.x, p.pos.y, p.width, p.height);
     }
 
     circleToRect(cx, cy, cr, rx, ry, rw, rh) {
-        const closestX = Math.min(Math.max(rx, cx), rx + rw);
+        cx += cr; //Account for the pos being the top-left corner
+        cy += cr;
+        const closestX = Math.min(Math.max(rx, cx), rx + rw); //Find the closest point on the rect
         const closestY = Math.min(Math.max(ry, cy), ry + rh);
         const xDist = cx - closestX;
         const yDist = cy - closestY;
-        return (xDist * xDist + yDist * yDist < cr * cr);
+        return (xDist * xDist + yDist * yDist < cr * cr); //Check if the point is close enough to the cirlce
     }
 
     serialize() {
