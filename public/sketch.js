@@ -18,9 +18,11 @@ const spriteNames = [
     'ball',
     'fireball',
     'shell',
+    'saw',
     'fireflower',
     'big',
     'small',
+    'star',
     'powerupBorder',
     'divider'
 ];
@@ -167,14 +169,33 @@ function renderGame() {
 
         const margin = 10;
         for (powerup of gameData.powerups) {
-            const diameter = max(powerup.width, powerup.height) + (margin * 2);
-            image(sprites['powerupBorder'], powerup.x - margin, powerup.y - margin, diameter, diameter); //Border Image
+            const diameter = max(powerup.width, powerup.height);
+            const centerX = powerup.x + (powerup.width / 2);
+            const centerY = powerup.y + (powerup.height / 2);
+            image(sprites['powerupBorder'], centerX - (diameter / 2) - margin, centerY - (diameter / 2) - margin, diameter + (margin * 2), diameter + (margin * 2)); //Border Image
             if (!powerup.collected) {
                 let name;
                 if (powerup.name == "Fire") name = "fireflower";
                 if (powerup.name == "Big") name = "big";
                 if (powerup.name == "Small") name = "small";
-                image(sprites[name], powerup.x, powerup.y, powerup.width, powerup.height);
+                if (powerup.name == "Star") {
+                    name = "star";
+                    push();
+                    const min = 0;
+                    const max = 255;
+                    const inc = (max - min) / 3;
+                    const first = random(min + (inc * 2), max);
+                    const second = random(min + (inc * 1), min + (inc * 2));
+                    const third = random(min + (inc), min + (inc));
+                    let rand = random(1);
+                    if (rand < 1 / 3) tint(first, second, third); //Mostly Red
+                    else if (rand < 2 / 3) tint(first, first, third); //Mostly yellow
+                    else tint(second, second, first); //Mostly light Blue
+                    image(sprites[name], powerup.x, powerup.y, powerup.width, powerup.height);
+                    pop();
+                } else {
+                    image(sprites[name], powerup.x, powerup.y, powerup.width, powerup.height);
+                }
             }
         }
         if (movingSprites.length > 0) {
@@ -304,9 +325,9 @@ class Player {
         this.displayWidth = this.baseDisplayWidth;
         this.displayHeight = this.baseDisplayHeight;
 
-        let xPos = 40;
+        let xPos = 50;
         if (this.aOrB == 'B') {
-            xPos = origWidth - this.width - 40;
+            xPos = origWidth - (this.width + 50);
         }
         this.pos = new Vector(xPos, (origHeight / 2) - (this.height / 2)); //The x and y of the top right corner of the paddle
         this.prevPos = new Vector();
@@ -329,6 +350,7 @@ class Player {
             if (this.powerup == "Fire") this.nameWithPowerup += "Fire";
             else if (this.powerup == "dead") this.pos.y = (origHeight / 2) - (this.height / 2); //Reset pos if you die
             else if (this.powerup == "Big") {
+                const margin = 50;
                 const oldSizeMult = this.sizeMult;
                 this.sizeMult = 1.3;
 
@@ -338,28 +360,30 @@ class Player {
                 this.displayHeight = this.baseDisplayHeight * this.sizeMult;
 
                 if (this.aOrB == 'A') {
-                    this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+                    this.pos.x = margin - (this.baseWidth / this.sizeMult);
                 } else if (this.aOrB == 'B') {
-                    this.pos.x = origWidth - (40 + (this.baseWidth * this.sizeMult));
+                    this.pos.x = origWidth - (margin + (this.baseWidth * this.sizeMult));
                 }
                 this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
             } else if (this.powerup == "Small") {
                 const oldSizeMult = this.sizeMult;
+                const margin = 50;
                 this.sizeMult = .8;
                 this.width = this.baseWidth * this.sizeMult;
                 this.height = this.baseHeight * this.sizeMult;
                 this.displayWidth = this.baseDisplayWidth * this.sizeMult;
                 this.displayHeight = this.baseDisplayHeight * this.sizeMult;
-
+                //TODO The X calculations are still slightly incorrect, I think
                 if (this.aOrB == 'A') {
-                    this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+                    this.pos.x = margin - (this.baseWidth / this.sizeMult);
                 } else if (this.aOrB == 'B') {
-                    this.pos.x = origWidth - (40 + (this.baseWidth * this.sizeMult));
+                    this.pos.x = origWidth - (margin + (this.baseWidth * this.sizeMult));
                 }
                 this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
             }
             if (this.powerup != "Big" && this.powerup != "Small") {
                 const oldSizeMult = this.sizeMult; //Reset the size
+                const margin = 50;
                 this.sizeMult = 1;
                 this.width = this.baseWidth;
                 this.height = this.baseHeight;
@@ -367,9 +391,9 @@ class Player {
                 this.displayHeight = this.baseDisplayHeight;
 
                 if (this.aOrB == 'A') {
-                    this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+                    this.pos.x = margin;
                 } else if (this.aOrB == 'B') {
-                    this.pos.x = origWidth - (40 + (this.baseWidth * this.sizeMult));
+                    this.pos.x = origWidth - (margin + this.baseWidth);
                 }
                 this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
             }
@@ -379,11 +403,24 @@ class Player {
     show() {
         //Accounts for different transparency in each sprite
         if (this.powerup == "dead") return;
-        else if (this.aOrB == 'A')
+        if (this.powerup == "Star") {
+            push();
+            const min = 0;
+            const max = 255;
+            const inc = (max - min) / 3;
+            const first = random(min + (inc * 2), max);
+            const second = random(min + (inc * 1), min + (inc * 2));
+            const third = random(min + (inc), min + (inc));
+            let rand = random(1);
+            if (rand < 1 / 3) tint(first, second, third); //Mostly Red
+            else if (rand < 2 / 3) tint(first, first, third); //Mostly yellow
+            else tint(second, second, first); //Mostly light Blue
+        }
+        if (this.aOrB == 'A')
             image(sprites[this.nameWithPowerup], this.pos.x + (this.displayWidth / 6), this.pos.y, this.displayWidth, this.displayHeight);
         else if (this.aOrB == 'B')
             image(sprites[this.nameWithPowerup], this.pos.x - (this.displayWidth * .25), this.pos.y, this.displayWidth, this.displayHeight);
-
+        if (this.powerup == "Star") pop();
     }
 
     reset() {
@@ -431,10 +468,10 @@ class MovingSprite {
     }
 
     show() {
-        if (this.name == "fireball") {
+        if (this.name == "fireball" || this.name == "saw") {
             push();
             translate(this.pos.x + this.width / 2, this.pos.y + this.height / 2);
-            rotate(Math.PI * this.extra.rot * .5);
+            rotate(this.extra.rot);
             image(sprites[this.name], -this.width / 2, -this.height / 2, this.width, this.height);
             pop();
         } else {

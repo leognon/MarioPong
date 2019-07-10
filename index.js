@@ -125,7 +125,7 @@ class Ball {
         let ang = (Math.random() * (this.maxAng * 2)) - (this.maxAng);
         if (Math.random() < .5) ang += Math.PI;
 
-        ang = Math.PI + .03; //TODO REMOVE this
+        ang = Math.PI; //TODO REMOVE this
         this.vel = new Vector(Math.cos(ang) * this.speed, Math.sin(ang) * this.speed);
         this.prevPos = this.pos.copy();
         this.prevVel = new Vector();
@@ -216,8 +216,6 @@ class Ball {
 
                             this.vel.set(this.vel.x, this.vel.y * 1.3);
                             this.speed *= 1.1;
-
-                            console.log("speed up");
                         }
                     }
                 }
@@ -254,6 +252,81 @@ class Ball {
     }
 }
 
+class Saw {
+    constructor(y, dir) {
+        this.speed = .002;
+        this.width = 100;
+        this.height = 100;
+        const extraSpace = 10;
+        const x = (dir == 1) ? -this.width - extraSpace : WIDTH + extraSpace;
+        this.pos = new Vector(x, y);
+        this.dir = dir;
+        this.vel = new Vector(this.dir * this.speed, 0);
+        this.rot = 0;
+        this.rotSpeed = .1;
+    }
+
+    update(p1, p2) {
+        let playerHit = -1;
+        let hitPlayerWithStar = false;
+
+        if (this.hitPaddle(p1)) {
+            if (p1.powerup != "Star") playerHit = 0; //If it hit a vulnerable player
+            else hitPlayerWithStar = true; //If it hit an invincible player
+        }
+        if (this.hitPaddle(p2)) {
+            if (p2.powerup != "Star") playerHit = 1; //If it hit a vulnerable player
+            else hitPlayerWithStar = true; //If it hit an invincible player
+        }
+        if (hitPlayerWithStar) playerHit = -2;
+
+        this.vel.setMag(this.speed * deltaTime);
+        this.pos.add(this.vel);
+        this.rot += this.rotSpeed;
+        this.rot %= Math.PI * 2;
+
+        return playerHit;
+    }
+
+    hitPaddle(p) {
+        return this.circleToRect(this.pos.x, this.pos.y, this.width * .5, p.pos.x, p.pos.y, p.width, p.height);
+    }
+
+    circleToRect(cx, cy, cr, rx, ry, rw, rh) {
+        cx += cr; //Account for the pos being the top-left corner
+        cy += cr;
+        const closestX = Math.min(Math.max(rx, cx), rx + rw); //Find the closest point on the rect
+        const closestY = Math.min(Math.max(ry, cy), ry + rh);
+        const xDist = cx - closestX;
+        const yDist = cy - closestY;
+        return (xDist * xDist + yDist * yDist < cr * cr); //Check if the point is close enough to the cirlce
+    }
+
+    startMoving() {
+        this.vel = new Vector(this.dir * this.speed, 0);
+    }
+
+    stopMoving() {
+        this.vel.mult(0);
+    }
+
+    serialize() {
+        return {
+            'name': 'saw',
+            'x': this.pos.x,
+            'y': this.pos.y,
+            'vx': this.vel.x,
+            'vy': this.vel.y,
+            'width': this.width,
+            'height': this.height,
+            'speed': this.speed,
+            'extra': {
+                'rot': this.rot
+            }
+        };
+    }
+}
+
 class Fireball {
     constructor(pos, dir) {
         this.width = 40;
@@ -282,7 +355,7 @@ class Fireball {
         if (p2.powerup != "dead" && this.hitPaddle(p2)) hitPlayer = 1;
 
         if (this.lastRot > 4) {
-            this.rot = (this.rot + 1) % 4;
+            this.rot = (this.rot + (Math.PI * .5)) % (Math.PI * 2);
             this.lastRot = 0;
         }
 
@@ -360,7 +433,7 @@ class Shell {
 
 
         if (canBounce && !this.hasBounced && this.circleToRect(this.pos.x, this.pos.y, this.width * .4, ball.pos.x, ball.pos.y, ball.width, ball.height)) {
-            this.vel.set(ball.vel.x, ball.vel.y); //TODO Get shells to bounce
+            this.vel.set(ball.vel.x, ball.vel.y);
             this.hasBounced = true;
         }
 
@@ -384,7 +457,7 @@ class Shell {
         this.vel.mult(0);
     }
 
-    hitPaddle(p) { //Notice this.width is * .3, this makes collision slightly nicer
+    hitPaddle(p) {
         return this.circleToRect(this.pos.x, this.pos.y, this.width * .5, p.pos.x, p.pos.y, p.width, p.height);
     }
 
@@ -425,6 +498,9 @@ class Powerup {
         } else if (name == "Small") {
             this.width = 41.4;
             this.height = 39.6;
+        } else if (name == "Star") {
+            this.width = 40;
+            this.height = 47.5;
         }
 
         if (pos == "center") {
@@ -472,9 +548,9 @@ class Player {
         this.displayWidth = this.baseDisplayWidth;
         this.displayHeight = this.baseDisplayHeight;
 
-        let xPos = 40;
+        let xPos = 50;
         if (this.aOrB == 'B') {
-            xPos = WIDTH - this.width - 40;
+            xPos = WIDTH - (this.width + 50);
         }
         this.pos = new Vector(xPos, HEIGHT / 2 - (this.height / 2)); //The x and y of the top right corner of the paddle
         this.up = false; //Is the up key pressed
@@ -503,6 +579,7 @@ class Player {
     reset() {
         this.powerup = null;
         const oldSizeMult = this.sizeMult; //Reset the size
+        const margin = 50;
         this.sizeMult = 1;
         this.width = this.baseWidth;
         this.height = this.baseHeight;
@@ -510,11 +587,12 @@ class Player {
         this.displayHeight = this.baseDisplayHeight;
 
         if (this.aOrB == 'A') {
-            this.pos.x = 40 - (this.baseWidth / this.sizeMult);
+            this.pos.x = margin;
         } else if (this.aOrB == 'B') {
-            this.pos.x = WIDTH - (40 + (this.baseWidth * this.sizeMult));
+            this.pos.x = WIDTH - (margin + this.baseWidth);
         }
         this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+
     }
 
     setPos(p) {
@@ -557,6 +635,7 @@ class Game {
         this.ball = new Ball(8, 8);
         this.fireballs = [];
         this.shells = [];
+        this.saws = [];
 
         this.lastPlayerHit = -1;
         this.powerups = [];
@@ -584,7 +663,7 @@ class Game {
 
         //Picks and removes a random round
         //TODO DON'T MAKE ROUND ALWAYS SET TO THE SAME THING!
-        const round = 2; //this.unusedRounds.splice(Math.floor(Math.random(this.unusedRounds.lenght)), 1)[0]; 
+        const round = 3; //this.unusedRounds.splice(Math.floor(Math.random(this.unusedRounds.lenght)), 1)[0]; 
 
         switch (round) {
             case 0:
@@ -602,12 +681,24 @@ class Game {
                     const y = (i * (HEIGHT / 5)) + 30;
                     this.shells.push(new Shell(WIDTH / 2, y));
                 }
+                break;
+            case 3:
+                this.powerups = [new Powerup("Star", "center")];
+                this.saws = [];
+                for (let i = 0; i < 3; i++) {
+                    const y = (i * (HEIGHT / 3)) + 10;
+                    this.saws.push(new Saw(y, 1));
+                    this.saws.push(new Saw(y, -1));
+                }
+                break;
+
         }
     }
 
     beginCountdown(firstRound = false) {
         this.fireballs.map(f => f.stopMoving()); //Stop fireballs from moving
         this.shells.map(s => s.stopMoving()); //Stop fireballs from moving
+        this.saws.map(s => s.stopMoving()); //Stop saws from moving
         this.ball.vel.mult(0); //Stop ball moving during countdown
         this.countdownInterval = setInterval(() => { //Display Countdown for 3 seconds
             this.countdownTime--; //Countdown
@@ -618,7 +709,10 @@ class Game {
                 this.countdownText.text = "3"; //Reset countdown stuff
                 this.countingDown = false;
                 if (!firstRound) this.initNextRound(); //Only create a new round if its not the first
-                else this.ball.reset(); //If its the first round, just reset some the ball
+                else {
+                    this.ball.reset(); //If its the first round, just reset some the ball
+                    this.saws.map(s => s.startMoving());
+                }
             }
         }, 1000);
     }
@@ -627,6 +721,7 @@ class Game {
         this.lastPlayerHit = -1;
         this.fireballs = [];
         this.shells = [];
+        this.saws = [];
         this.powerups = [];
 
         this.players[0].reset();
@@ -649,6 +744,7 @@ class Game {
                     if (hit > -1) this.players[hit].hit(); //Remove player who got hit
                 }
             }
+
             for (let i = this.shells.length - 1; i >= 0; i--) {
                 const shell = this.shells[i];
                 if (shell.shouldDestroy()) { //Remove shells out of the screen
@@ -657,6 +753,15 @@ class Game {
                     const hit = shell.update(this.players[0], this.players[1], this.ball, canBounce); //Check if shell hit player
                     if (hit > -1) this.players[hit].hit(); //Remove player who got hit
                 }
+            }
+
+            for (let i = this.saws.length - 1; i >= 0; i--) {
+                const saw = this.saws[i];
+                const hit = saw.update(this.players[0], this.players[1]); //Returns who got hit
+                if (hit == -2) //If it hit -2, that means it hit player with star power
+                    this.saws.splice(i, 1); //Destory saw
+                else if (hit > -1) this.players[hit].hit(); //If saw hit p1
+
             }
 
             if (this.lastPlayerHit > -1) {
@@ -682,6 +787,7 @@ class Game {
                 this.winnerText.text = `W${winner}`;
                 this.showingWinner = true; //Stops game from updating
                 this.fireballs.map(f => f.stopMoving());
+                this.saws.map(s => s.stopMoving());
                 this.shells.map(s => s.stopMoving());
                 setTimeout(() => {
                     this.endGame();
@@ -692,7 +798,8 @@ class Game {
         let movingSprites = [];
         if (!this.countingDown && !this.showingWinner) movingSprites.push(this.ball.serialize());
         movingSprites = movingSprites.concat(this.fireballs.map(f => f.serialize()));
-        movingSprites = movingSprites.concat(this.shells.map(s => s.serialize()))
+        movingSprites = movingSprites.concat(this.shells.map(s => s.serialize()));
+        movingSprites = movingSprites.concat(this.saws.map(s => s.serialize()));
 
         const gameData = {
             "sprites": [
