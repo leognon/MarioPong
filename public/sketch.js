@@ -13,14 +13,25 @@ let marioOrYoshi;
 const spriteNames = [
     'playerA',
     'playerAFire',
+    'playerACopter',
     'playerB',
     'playerBFire',
+    'playerBCopter',
     'ball',
     'fireball',
+    'shell',
+    'saw',
+    'lava',
+    'copter',
+    // 'copterHat',
     'fireflower',
+    'big',
+    'small',
+    'star',
     'powerupBorder',
     'divider'
 ];
+let lavaColor;
 
 const totalToLoad = spriteNames.length + 1; //The + 1 is for loading the font
 let amtLoaded = 0;
@@ -33,11 +44,12 @@ let gameData = null;
 
 let deltaTime = 0;
 let lastFrameTime = Date.now();
-//TODO Fix glitch where fireballs try to move during countdown
+
 function setup() {
     function loaded() {
         amtLoaded++;
         if (amtLoaded >= totalToLoad) { //Once assets have loaded, connect to the server
+            lavaColor = color(255, 56, 4);
             status = "menu";
             joinButton.show();
             socket = io();
@@ -147,41 +159,91 @@ function renderGame() {
     scale(scaleFactor);
     fill(255);
     if (gameData) {
-        noStroke();
-        textAlign(CENTER, CENTER);
-        textSize(20);
-        text(gameData.score[0], origWidth * .45, 25);
-        text(gameData.score[1], origWidth * .55, 25);
-
         const divider = sprites['divider'];
-        image(divider, origWidth / 2 - divider.width / 2, 0, 2, origHeight);
+        image(divider, origWidth / 2 - divider.width / 2, 0, 2, origHeight); //Dotted line in center
 
-        for (item of gameData.sprites) {
+        for (item of gameData.sprites) { //Shows players
             if (item.name != player.nameWithPowerup && item.powerup != "dead") {
-                image(sprites[item.name], item.x, item.y, item.width, item.height);
+                if (item.powerup == "Star") {
+                    push();
+                    const min = 0;
+                    const max = 255;
+                    const inc = (max - min) / 3;
+                    const first = random(min + (inc * 2), max);
+                    const second = random(min + (inc * 1), min + (inc * 2));
+                    const third = random(min + (inc), min + (inc));
+                    let rand = random(1);
+                    if (rand < 1 / 3) tint(first, second, third); //Mostly Red
+                    else if (rand < 2 / 3) tint(first, first, third); //Mostly yellow
+                    else tint(second, second, first); //Mostly light Blue
+                    image(sprites[item.name], item.x, item.y, item.width, item.height);
+                    pop();
+                } else {
+                    image(sprites[item.name], item.x, item.y, item.width, item.height);
+                }
             }
         }
 
         const margin = 10;
-        for (powerup of gameData.powerups) {
-            const diameter = max(powerup.width, powerup.height) + (margin * 2);
-            image(sprites['powerupBorder'], powerup.x - margin, powerup.y - margin, diameter, diameter); //Border Image
+        for (powerup of gameData.powerups) { //Shows powerups
+            const diameter = max(powerup.width, powerup.height);
+            const centerX = powerup.x + (powerup.width / 2);
+            const centerY = powerup.y + (powerup.height / 2);
+            image(sprites['powerupBorder'], centerX - (diameter / 2) - margin, centerY - (diameter / 2) - margin, diameter + (margin * 2), diameter + (margin * 2)); //Border Image
             if (!powerup.collected) {
                 let name;
                 if (powerup.name == "Fire") name = "fireflower";
-                image(sprites[name], powerup.x, powerup.y, powerup.width, powerup.height);
+                if (powerup.name == "Big") name = "big";
+                if (powerup.name == "Small") name = "small";
+                if (powerup.name == "Copter") name = "copter";
+                if (powerup.name == "Star") {
+                    name = "star";
+                    push();
+                    const min = 0;
+                    const max = 255;
+                    const inc = (max - min) / 3;
+                    const first = random(min + (inc * 2), max);
+                    const second = random(min + (inc * 1), min + (inc * 2));
+                    const third = random(min + (inc), min + (inc));
+                    let rand = random(1);
+                    if (rand < 1 / 3) tint(first, second, third); //Mostly Red
+                    else if (rand < 2 / 3) tint(first, first, third); //Mostly yellow
+                    else tint(second, second, first); //Mostly light Blue
+                    image(sprites[name], powerup.x, powerup.y, powerup.width, powerup.height);
+                    pop();
+                } else {
+                    image(sprites[name], powerup.x, powerup.y, powerup.width, powerup.height);
+                }
             }
         }
-        if (movingSprites.length > 0) {
+        if (movingSprites.length > 0) { //Shows Ball, Fireballs, lava, shells, etc
             for (let movingSprite of movingSprites) {
                 if (!justReceivedData) {
-                    movingSprite.update();
+                    if (movingSprite.name == "lava") movingSprite.update(false);
+                    else movingSprite.update();
                 }
                 movingSprite.show();
+                if (movingSprite.name == "lava") {
+                    for (let i = movingSprite.pos.x - movingSprite.width; i >= -movingSprite.width; i -= movingSprite.width) {
+                        movingSprite.show(i);
+                    }
+                    for (let i = movingSprite.pos.x + movingSprite.width; i <= origWidth; i += movingSprite.width) {
+                        movingSprite.show(i);
+                    }
+                    fill(lavaColor);
+                    noStroke();
+                    rect(0, movingSprite.pos.y + movingSprite.height - 3, origWidth, origHeight - movingSprite.pos.y + 10);
+                }
             }
             justReceivedData = false;
         }
 
+        noStroke();
+        textAlign(CENTER, CENTER);
+        fill(255);
+        textSize(20);
+        text(gameData.score[0], origWidth * .45, 25); //Shows scores
+        text(gameData.score[1], origWidth * .55, 25);
     } else {
         console.log("No game data yet!");
     }
@@ -191,17 +253,15 @@ function renderGame() {
     if (gameData) {
         noStroke();
         fill(255);
-        for (txt of gameData.text) {
+        for (txt of gameData.text) { //Shows countdown, and winner
             textSize(txt.size);
 
             if (txt.text == "START") txt.text = `START`;
             if (txt.text[0] = "W") { //If the text is saying the winner
                 if (txt.text[1] == "M") { //If mario won
-                    textSize(40);
                     if (marioOrYoshi == "Mario") txt.text = "Congratulations!\nMario Wins!";
-                    else txt.text = "Game Over\nMario Wins"; //TODO Text is not completely centered with the \n
+                    else txt.text = "Game Over\nMario Wins";
                 } else if (txt.text[1] == "Y") { //If yoshi won
-                    textSize(40);
                     if (marioOrYoshi == "Mario") txt.text = "Game Over\nYoshi Wins";
                     else txt.text = "Congratulations!\nYoshi Wins!";
                 }
@@ -214,7 +274,7 @@ function renderGame() {
     stroke(255);
     const weight = 2;
     strokeWeight(weight);
-    rect(weight / 2, weight / 2, width - weight, height - weight);
+    rect(weight / 2, weight / 2, width - weight, height - weight); //Border
 }
 
 function windowResized() {
@@ -281,24 +341,32 @@ class Player {
         this.aOrB = aOrB;
         this.name = `player${this.aOrB}`;
         this.nameWithPowerup = this.name;
-        this.width = 20;
-        this.height = 50;
+        this.baseWidth = 20;
+        this.baseHeight = 50;
+
+        this.width = this.baseWidth;
+        this.height = this.baseHeight;
+
+        this.sizeMult = 1;
         this.powerup = null;
 
         if (this.aOrB == 'A') { //Mario dimensions
-            this.displayWidth = 24;
-            this.displayHeight = 50;
+            this.baseDisplayHeight = this.height;
+            this.baseDisplayWidth = this.baseDisplayHeight * (12 / 25);
         }
         if (this.aOrB == 'B') { //Yoshi dimensions
-            this.displayWidth = 34;
-            this.displayHeight = 50;
+            this.baseDisplayHeight = this.height;
+            this.baseDisplayWidth = this.baseDisplayHeight * (11 / 16);
         }
-        let xPos = 40;
+        this.displayWidth = this.baseDisplayWidth;
+        this.displayHeight = this.baseDisplayHeight;
+
+        let xPos = 50;
         if (this.aOrB == 'B') {
-            xPos = origWidth - this.width - 40;
+            xPos = origWidth - (this.width + 50);
         }
         this.pos = new Vector(xPos, (origHeight / 2) - (this.height / 2)); //The x and y of the top right corner of the paddle
-        this.prevY = undefined;
+        this.prevPos = new Vector();
         this.up = false; //Is the up key pressed
         this.down = false; //Is the down key pressed
         this.speed = .4; //Vertical movement speed
@@ -312,16 +380,87 @@ class Player {
     }
 
     setPowerup(p) {
-        this.powerup = p;
-        this.nameWithPowerup = this.name;
-        if (this.powerup == "Fire") this.nameWithPowerup += "Fire";
+        if (this.powerup == "Copter" && p == null) {
+            this.reset(); //Reset if it just had copter
+        }
+
+        if (p != this.powerup) {
+            this.powerup = p;
+            this.nameWithPowerup = this.name;
+            if (this.powerup == "Fire") this.nameWithPowerup += "Fire";
+            if (this.powerup == "Copter") this.nameWithPowerup += "Copter";
+            else if (this.powerup == "dead") this.pos.y = (origHeight / 2) - (this.height / 2); //Reset pos if you die
+            else if (this.powerup == "Big") {
+                const margin = 50;
+                const oldSizeMult = this.sizeMult;
+                this.sizeMult = 1.3;
+
+                this.width = this.baseWidth * this.sizeMult;
+                this.height = this.baseHeight * this.sizeMult;
+                this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+                this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+
+                if (this.aOrB == 'A') {
+                    this.pos.x = margin - (this.baseWidth / this.sizeMult);
+                } else if (this.aOrB == 'B') {
+                    this.pos.x = origWidth - (margin + (this.baseWidth * this.sizeMult));
+                }
+                this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+            } else if (this.powerup == "Small") {
+                const oldSizeMult = this.sizeMult;
+                const margin = 50;
+                this.sizeMult = .8;
+                this.width = this.baseWidth * this.sizeMult;
+                this.height = this.baseHeight * this.sizeMult;
+                this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+                this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+                if (this.aOrB == 'A') {
+                    this.pos.x = margin - (this.baseWidth / this.sizeMult);
+                } else if (this.aOrB == 'B') {
+                    this.pos.x = origWidth - (margin + (this.baseWidth * this.sizeMult));
+                }
+                this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+            }
+            if (this.powerup != "Big" && this.powerup != "Small") {
+                const oldSizeMult = this.sizeMult; //Reset the size
+                const margin = 50;
+                this.sizeMult = 1;
+                this.width = this.baseWidth;
+                this.height = this.baseHeight;
+                this.displayWidth = this.baseDisplayWidth;
+                this.displayHeight = this.baseDisplayHeight;
+
+                if (this.aOrB == 'A') {
+                    this.pos.x = margin;
+                } else if (this.aOrB == 'B') {
+                    this.pos.x = origWidth - (margin + this.baseWidth);
+                }
+                this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+            }
+        }
     }
 
     show() {
         //Accounts for different transparency in each sprite
         if (this.powerup == "dead") return;
-        if (this.aOrB == 'A') image(sprites[this.nameWithPowerup], this.pos.x + 3, this.pos.y, this.displayWidth, this.displayHeight);
-        else if (this.aOrB == 'B') image(sprites[this.nameWithPowerup], this.pos.x - 7, this.pos.y, this.displayWidth, this.displayHeight);
+        if (this.powerup == "Star") {
+            push();
+            const min = 0;
+            const max = 255;
+            const inc = (max - min) / 3;
+            const first = random(min + (inc * 2), max);
+            const second = random(min + (inc * 1), min + (inc * 2));
+            const third = random(min + (inc), min + (inc));
+            let rand = random(1);
+            if (rand < 1 / 3) tint(first, second, third); //Mostly Red
+            else if (rand < 2 / 3) tint(first, first, third); //Mostly yellow
+            else tint(second, second, first); //Mostly light Blue
+        }
+        if (this.aOrB == 'A')
+            image(sprites[this.nameWithPowerup], this.pos.x + (this.displayWidth / 6), this.pos.y, this.displayWidth, this.displayHeight);
+        else if (this.aOrB == 'B')
+            image(sprites[this.nameWithPowerup], this.pos.x - (this.displayWidth * .25), this.pos.y, this.displayWidth, this.displayHeight);
+        if (this.powerup == "Star") pop();
     }
 
     reset() {
@@ -331,17 +470,29 @@ class Player {
     }
 
     update() {
-        if (this.powerup != "dead") {
-            if (this.up) this.pos.y -= (this.speed * deltaTime); //Move up
-            if (this.down) this.pos.y += (this.speed * deltaTime); //Move down
+        if (this.powerup != "dead" && this.powerup != "Copter") {
+            if (this.up) this.pos.y -= (this.speed * deltaTime / this.sizeMult); //Move up
+            if (this.down) this.pos.y += (this.speed * deltaTime / this.sizeMult); //Move down
             this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position
+
         }
-        if (this.pos.y != this.prevY) { //If the player has moved, send position to server
-            socket.emit('yPos', this.pos.y);
-            this.prevY = this.pos.y;
+        if (this.powerup == "Copter") {
+            this.pos.y = lerp(this.pos.y, -75, .05);
+        }
+        if (this.pos.x != this.prevPos.x || this.pos.y != this.prevPos.y) { //If the player has moved, send position to server
+            const data = {
+                'x': this.pos.x,
+                'y': this.pos.y
+            }
+            socket.emit('pos', data);
+            this.prevPos = this.pos.copy();
             this.sentNotMoving = false;
         } else if (!this.sentNotMoving) {
-            socket.emit('yPos', this.pos.y); //When we stop moving, emit the pos one more time so the server knows
+            const data = {
+                'x': this.pos.x,
+                'y': this.pos.y
+            }
+            socket.emit('pos', data); //When we stop moving, emit the pos one more time so the server knows
             this.sentNotMoving = true;
         }
     }
@@ -360,15 +511,15 @@ class MovingSprite {
         this.extra = extra;
     }
 
-    show() {
-        if (this.name == "fireball") {
+    show(x = this.pos.x) {
+        if (this.name == "fireball" || this.name == "saw") {
             push();
             translate(this.pos.x + this.width / 2, this.pos.y + this.height / 2);
-            rotate(Math.PI * this.extra.rot * .5);
+            rotate(this.extra.rot);
             image(sprites[this.name], -this.width / 2, -this.height / 2, this.width, this.height);
             pop();
         } else {
-            image(sprites[this.name], this.pos.x, this.pos.y, this.width, this.height);
+            image(sprites[this.name], x, this.pos.y, this.width, this.height);
         }
     }
 
@@ -376,12 +527,14 @@ class MovingSprite {
         this.vel.setMag(this.speed);
     }
 
-    update() {
+    update(shouldBounce = true) {
         this.vel.setMag(deltaTime * this.speed);
         this.pos.add(this.vel);
 
-        this.bounceWalls();
-        this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor
+        if (shouldBounce) {
+            this.bounceWalls();
+            this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor
+        }
     }
 
     setPos(x, y) {
@@ -436,7 +589,7 @@ class Vector {
 
     setMag(m) {
         const currMagSq = (this.x * this.x) + (this.y * this.y);
-        if (m * m != currMagSq) {
+        if (currMagSq > 0 && m * m != currMagSq) {
             const currMag = Math.sqrt(currMagSq);
             this.x = (this.x / currMag) * m;
             this.y = (this.y / currMag) * m;

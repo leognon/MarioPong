@@ -60,14 +60,22 @@ class Vector {
         return Math.sqrt((this.x * this.x) + (this.y * this.y));
     }
 
-    mult(m) {
-        this.x *= m;
-        this.y *= m;
+    mult(a, b = null) {
+        if (a instanceof Vector) {
+            this.x *= a.x;
+            this.y *= a.y;
+        } else if (b == null) {
+            this.x *= a;
+            this.y *= a;
+        } else {
+            this.x *= a;
+            this.y *= b;
+        }
     }
 
     setMag(m) {
         const currMagSq = (this.x * this.x) + (this.y * this.y);
-        if (m * m != currMagSq) {
+        if (currMagSq > 0 && m * m != currMagSq) {
             const currMag = Math.sqrt(currMagSq);
             this.x = (this.x / currMag) * m;
             this.y = (this.y / currMag) * m;
@@ -104,6 +112,7 @@ class Ball {
         this.maxAng = Math.PI * .4;
         this.baseSpeed = .2;
         this.speed = this.baseSpeed;
+        this.respawning = false;
         this.reset();
     }
 
@@ -111,45 +120,64 @@ class Ball {
         this.vel.setMag(this.speed);
     }
 
-    reset() {
+    startRespawning() {
+        this.vel.mult(0);
+        this.respawning = true;
+    }
+
+    reset(startY = (HEIGHT / 2), maxY = false) {
+        this.respawning = false;
         this.speed = this.baseSpeed;
-        this.pos = new Vector((WIDTH / 2) - (this.width / 2), (HEIGHT / 2) - (this.height / 2));
-        let ang = (Math.random() * (this.maxAng * 2)) - (this.maxAng);
-        if (Math.random() < .5) ang += Math.PI;
+        this.pos = new Vector((WIDTH / 2) - (this.width / 2), startY - (this.height / 2));
+
+        let ang;
+        if (maxY === false) {
+            ang = (Math.random() * (this.maxAng * 2)) - (this.maxAng);
+        } else {
+            maxY -= 25;
+            const gapY = maxY - (this.pos.y + this.height / 2);
+            const gapX = WIDTH - (this.pos.x + this.width / 2) - 50; //The space from its pos to the player
+            const maxAng = Math.atan2(gapY, gapX);
+            const minAng = -Math.atan2(gapY + maxY, gapX);
+            const range = maxAng - minAng;
+            ang = (Math.random() * range) + minAng;
+        }
 
         this.vel = new Vector(Math.cos(ang) * this.speed, Math.sin(ang) * this.speed);
+        if (Math.random() < .5) this.vel.x *= -1;
         this.prevPos = this.pos.copy();
         this.prevVel = new Vector();
     }
 
     update(p1, p2) {
         let bouncedOff = -1;
+        if (!this.respawning) {
+            this.prevPos = this.pos.copy();
+            this.prevVel = this.vel.copy();
+            this.vel.setMag(deltaTime * this.speed);
 
-        this.prevPos = this.pos.copy();
-        this.prevVel = this.vel.copy();
-        this.vel.setMag(deltaTime * this.speed);
+            this.pos.add(this.vel);
 
-        this.pos.add(this.vel);
+            this.bounceWalls();
+            this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
+            if (p1.powerup != "dead" && this.hitPaddle(p1, -1)) bouncedOff = 0;
+            if (p2.powerup != "dead" && this.hitPaddle(p2, 1)) bouncedOff = 1
 
-        this.bounceWalls();
-        this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
-        if (p1.powerup != "dead" && this.hitPaddle(p1, -1)) bouncedOff = 0;
-        if (p2.powerup != "dead" && this.hitPaddle(p2, 1)) bouncedOff = 1
-
-        if (this.vel.magSq() > 225) { //Make sure the ball never goes too fast (can't go above 15 speed)
-            this.vel.setMag(15);
-        }
-        if (this.vel.x < .3 && this.vel.x > -.3) { //Make sure the ball never goes too vertical
-            if (this.vel.x == 0) {
-                console.log("THE BALLS VEL.X IS ZERO!!!!!");
-                if (this.pos.x > WIDTH / 2) this.vel.x += .1;
-                else this.vel.x -= .1
-            } else if (this.vel.x >= 0) {
-                this.vel.x += .05;
-            } else {
-                this.vel.x -= .05;
+            if (this.vel.magSq() > 225) { //Make sure the ball never goes too fast (can't go above 15 speed)
+                this.vel.setMag(15);
             }
-            this.fixMag();
+            if (this.vel.x < .3 && this.vel.x > -.3) { //Make sure the ball never goes too vertical
+                if (this.vel.x == 0) {
+                    console.log("THE BALLS VEL.X IS ZERO!!!!!");
+                    if (this.pos.x > WIDTH / 2) this.vel.x += .03;
+                    else this.vel.x -= .03
+                } else if (this.vel.x >= 0) {
+                    this.vel.x += .05;
+                } else {
+                    this.vel.x -= .05;
+                }
+                this.fixMag();
+            }
         }
         return bouncedOff;
     }
@@ -207,8 +235,6 @@ class Ball {
 
                             this.vel.set(this.vel.x, this.vel.y * 1.3);
                             this.speed *= 1.1;
-
-                            console.log("speed up");
                         }
                     }
                 }
@@ -232,6 +258,7 @@ class Ball {
     }
 
     serialize() {
+        //TODO Make a burning animation for the ball, and if it's respawning, show that
         return {
             'name': 'ball',
             'x': this.pos.x,
@@ -245,6 +272,81 @@ class Ball {
     }
 }
 
+class Saw {
+    constructor(y, dir) {
+        this.speed = .002;
+        this.width = 100;
+        this.height = 100;
+        const extraSpace = 10;
+        const x = (dir == 1) ? -this.width - extraSpace : WIDTH + extraSpace;
+        this.pos = new Vector(x, y);
+        this.dir = dir;
+        this.vel = new Vector(this.dir * this.speed, 0);
+        this.rot = 0;
+        this.rotSpeed = .1;
+    }
+
+    update(p1, p2) {
+        let playerHit = -1;
+        let hitPlayerWithStar = false;
+
+        if (this.hitPaddle(p1)) {
+            if (p1.powerup != "Star") playerHit = 0; //If it hit a vulnerable player
+            else hitPlayerWithStar = true; //If it hit an invincible player
+        }
+        if (this.hitPaddle(p2)) {
+            if (p2.powerup != "Star") playerHit = 1; //If it hit a vulnerable player
+            else hitPlayerWithStar = true; //If it hit an invincible player
+        }
+        if (hitPlayerWithStar) playerHit = -2;
+
+        this.vel.setMag(this.speed * deltaTime);
+        this.pos.add(this.vel);
+        this.rot += this.rotSpeed;
+        this.rot %= Math.PI * 2;
+
+        return playerHit;
+    }
+
+    hitPaddle(p) {
+        return this.circleToRect(this.pos.x, this.pos.y, this.width * .5, p.pos.x, p.pos.y, p.width, p.height);
+    }
+
+    circleToRect(cx, cy, cr, rx, ry, rw, rh) {
+        cx += cr; //Account for the pos being the top-left corner
+        cy += cr;
+        const closestX = Math.min(Math.max(rx, cx), rx + rw); //Find the closest point on the rect
+        const closestY = Math.min(Math.max(ry, cy), ry + rh);
+        const xDist = cx - closestX;
+        const yDist = cy - closestY;
+        return (xDist * xDist + yDist * yDist < cr * cr); //Check if the point is close enough to the cirlce
+    }
+
+    startMoving() {
+        this.vel = new Vector(this.dir * this.speed, 0);
+    }
+
+    stopMoving() {
+        this.vel.mult(0);
+    }
+
+    serialize() {
+        return {
+            'name': 'saw',
+            'x': this.pos.x,
+            'y': this.pos.y,
+            'vx': this.vel.x,
+            'vy': this.vel.y,
+            'width': this.width,
+            'height': this.height,
+            'speed': this.speed,
+            'extra': {
+                'rot': this.rot
+            }
+        };
+    }
+}
+
 class Fireball {
     constructor(pos, dir) {
         this.width = 40;
@@ -254,7 +356,7 @@ class Fireball {
         this.pos = new Vector(pos.x, pos.y - (this.height / 2));
         if (dir == -1) this.pos.x -= this.width;
         this.speed = .25;
-        this.vel = new Vector(dir * this.speed * .5, this.speed * 0.866); //The ball at a -60° ang
+        this.vel = new Vector(dir * this.speed * .5, this.speed * 0.866); //The fireball at a -60° ang
     }
 
     fixMag() {
@@ -273,7 +375,7 @@ class Fireball {
         if (p2.powerup != "dead" && this.hitPaddle(p2)) hitPlayer = 1;
 
         if (this.lastRot > 4) {
-            this.rot = (this.rot + 1) % 4;
+            this.rot = (this.rot + (Math.PI * .5)) % (Math.PI * 2);
             this.lastRot = 0;
         }
 
@@ -291,19 +393,22 @@ class Fireball {
         }
     }
 
-    hitPaddle(p) {
-        return this.hitRect(this.pos, p);
-
+    stopMoving() {
+        this.vel.mult(0);
     }
 
-    hitRect(pos, p, w, h) {
-        if (p instanceof Player) {
-            return (pos.x + this.width >= p.pos.x && pos.x <= p.pos.x + p.width && //Is inbtwn left and right of paddle
-                pos.y + this.height >= p.pos.y && pos.y <= p.pos.y + p.height) //Is inbtwn top and bottom of paddle
-        } else {
-            return (pos.x + this.width >= p.x && pos.x <= p.x + w && //Is inbtwn left and right of paddle
-                pos.y + this.height >= p.y && pos.y <= p.y + h) //Is inbtwn top and bottom of paddle
-        }
+    hitPaddle(p) {
+        return this.circleToRect(this.pos.x, this.pos.y, this.width * .5, p.pos.x, p.pos.y, p.width, p.height);
+    }
+
+    circleToRect(cx, cy, cr, rx, ry, rw, rh) {
+        cx += cr; //Account for the pos being the top-left corner
+        cy += cr;
+        const closestX = Math.min(Math.max(rx, cx), rx + rw); //Find the closest point on the rect
+        const closestY = Math.min(Math.max(ry, cy), ry + rh);
+        const xDist = cx - closestX;
+        const yDist = cy - closestY;
+        return (xDist * xDist + yDist * yDist < cr * cr); //Check if the point is close enough to the cirlce
     }
 
     serialize() {
@@ -323,6 +428,136 @@ class Fireball {
     }
 }
 
+class Shell {
+    constructor(x, y) {
+        this.width = 43.2;
+        this.height = 33.6;
+        this.pos = new Vector(x - (this.width / 2), y);
+        this.speed = .15;
+        this.hasBounced = false;
+        this.vel = new Vector();
+    }
+
+    fixMag() {
+        this.vel.setMag(this.speed);
+    }
+
+    update(p1, p2, ball, canBounce) {
+        let hitPlayer = -1;
+
+        this.vel.setMag(deltaTime * this.speed);
+        this.pos.add(this.vel);
+
+        this.bounceWalls();
+        this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
+
+
+        if (canBounce && !this.hasBounced && this.circleToRect(this.pos.x, this.pos.y, this.width * .4, ball.pos.x, ball.pos.y, ball.width, ball.height)) {
+            this.vel.set(ball.vel.x, ball.vel.y);
+            this.hasBounced = true;
+        }
+
+        if (p1.powerup != "dead" && this.hitPaddle(p1)) hitPlayer = 0;
+        if (p2.powerup != "dead" && this.hitPaddle(p2)) hitPlayer = 1;
+
+        return hitPlayer;
+    }
+
+    shouldDestroy() {
+        return (this.pos.x < -this.width || this.pos.x > WIDTH);
+    }
+
+    bounceWalls() { //Bounce off floor and ceiling
+        if ((this.pos.y <= 0 && this.vel.y < 0) || (this.pos.y >= HEIGHT - this.height && this.vel.y > 0)) {
+            this.vel.y *= -1;
+        }
+    }
+
+    stopMoving() {
+        this.vel.mult(0);
+    }
+
+    hitPaddle(p) {
+        return this.circleToRect(this.pos.x, this.pos.y, this.width * .5, p.pos.x, p.pos.y, p.width, p.height);
+    }
+
+    circleToRect(cx, cy, cr, rx, ry, rw, rh) {
+        cx += cr; //Account for the pos being the top-left corner
+        cy += cr;
+        const closestX = Math.min(Math.max(rx, cx), rx + rw); //Find the closest point on the rect
+        const closestY = Math.min(Math.max(ry, cy), ry + rh);
+        const xDist = cx - closestX;
+        const yDist = cy - closestY;
+        return (xDist * xDist + yDist * yDist < cr * cr); //Check if the point is close enough to the cirlce
+    }
+
+    serialize() {
+        return {
+            'name': 'shell',
+            'x': this.pos.x,
+            'y': this.pos.y,
+            'vx': this.vel.x,
+            'vy': this.vel.y,
+            'width': this.width,
+            'height': this.height,
+            'speed': this.speed
+        };
+    }
+}
+
+class Lava {
+    constructor() {
+        this.width = 72;
+        this.height = 24;
+        this.pos = new Vector(WIDTH, HEIGHT);
+        this.vel = new Vector(-.05, -.003);
+        this.speed = this.vel.mag();
+    }
+
+    update(p1, p2, ball) {
+        let hit = [false, false, false];
+
+        this.vel.setMag(deltaTime * this.speed);
+        this.pos.add(this.vel);
+        if (this.pos.x < -this.width) {
+            this.pos.x = WIDTH; //Make it wrap aorund
+        }
+        this.pos.y = Math.max(-15, this.pos.y); //Max height
+
+        if (p1.pos.y + p1.height > this.pos.y) hit[0] = true;
+        if (p2.pos.y + p2.height > this.pos.y) hit[1] = true;
+        if (ball.pos.y + ball.height > this.pos.y) hit[2] = true;
+
+        return hit;
+    }
+
+    riseFast() {
+        this.vel.set(-.05, -.18);
+        this.speed = this.vel.mag();
+    }
+
+    stopMoving() {
+        this.vel.mult(0);
+    }
+
+    startMoving() {
+        this.vel = new Vector(-.05, -.003);
+    }
+
+    serialize() {
+        return {
+            'name': 'lava',
+            'x': this.pos.x,
+            'y': this.pos.y,
+            'vx': this.vel.x,
+            'vy': this.vel.y,
+            'width': this.width,
+            'height': this.height,
+            'speed': this.speed
+        };
+    }
+}
+
 class Powerup {
     constructor(name, pos) {
         this.name = name;
@@ -330,10 +565,26 @@ class Powerup {
         if (name == "Fire") {
             this.width = 41.6;
             this.height = 40;
+        } else if (name == "Big") {
+            this.width = 43.2;
+            this.height = 36.8;
+        } else if (name == "Small") {
+            this.width = 41.4;
+            this.height = 39.6;
+        } else if (name == "Star") {
+            this.width = 40;
+            this.height = 47.5;
+        } else if (name == "Copter") {
+            this.width = 39.6;
+            this.height = 41.8;
         }
 
         if (pos == "center") {
-            this.pos = new Vector(WIDTH / 2 - this.width / 2, HEIGHT / 2 - this.height / 2);
+            this.pos = new Vector((WIDTH / 2) - (this.width / 2), (HEIGHT / 2) - (this.height / 2));
+        } else if (pos == "left") {
+            this.pos = new Vector((WIDTH / 3) - (this.width / 2), (HEIGHT / 3) - (this.height / 2));
+        } else if (pos == "right") {
+            this.pos = new Vector((WIDTH * 2 / 3) - (this.width / 2), (HEIGHT * 2 / 3) - (this.height / 2));
         }
     }
 
@@ -353,21 +604,29 @@ class Player {
     constructor(aOrB) {
         this.aOrB = aOrB;
         this.score = 0;
-        this.width = 20;
-        this.height = 50;
+        this.baseWidth = 20;
+        this.baseHeight = 50;
+
+        this.width = this.baseWidth;
+        this.height = this.baseHeight;
+
+        this.sizeMult = 1;
         this.powerup = null;
 
         if (this.aOrB == 'A') { //Mario dimensions
-            this.displayWidth = 24;
-            this.displayHeight = 50;
+            this.baseDisplayHeight = this.height;
+            this.baseDisplayWidth = this.baseDisplayHeight * (12 / 25);
         }
         if (this.aOrB == 'B') { //Yoshi dimensions
-            this.displayWidth = 34;
-            this.displayHeight = 50;
+            this.baseDisplayHeight = this.height;
+            this.baseDisplayWidth = this.baseDisplayHeight * (11 / 16);
         }
-        let xPos = 40;
+        this.displayWidth = this.baseDisplayWidth;
+        this.displayHeight = this.baseDisplayHeight;
+
+        let xPos = 50;
         if (this.aOrB == 'B') {
-            xPos = WIDTH - this.width - 40;
+            xPos = WIDTH - (this.width + 50);
         }
         this.pos = new Vector(xPos, HEIGHT / 2 - (this.height / 2)); //The x and y of the top right corner of the paddle
         this.up = false; //Is the up key pressed
@@ -377,25 +636,52 @@ class Player {
 
     setPowerup(p) {
         this.powerup = p.name;
+        if (this.powerup == "Big") {
+            this.sizeMult = 1.3;
+
+            this.width = this.baseWidth * this.sizeMult;
+            this.height = this.baseHeight * this.sizeMult;
+            this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+            this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+        } else if (this.powerup == "Small") {
+            this.sizeMult = .8;
+            this.width = this.baseWidth * this.sizeMult;
+            this.height = this.baseHeight * this.sizeMult;
+            this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+            this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+        }
     }
 
     reset() {
         this.powerup = null;
-        // this.pos.y = HEIGHT / 2 - (this.height / 2);
-        // this.up = false;
-        // this.down = false;
+        const oldSizeMult = this.sizeMult; //Reset the size
+        const margin = 50;
+        this.sizeMult = 1;
+        this.width = this.baseWidth;
+        this.height = this.baseHeight;
+        this.displayWidth = this.baseDisplayWidth;
+        this.displayHeight = this.baseDisplayHeight;
+
+        if (this.aOrB == 'A') {
+            this.pos.x = margin;
+        } else if (this.aOrB == 'B') {
+            this.pos.x = WIDTH - (margin + this.baseWidth);
+        }
+        this.pos.y -= (this.sizeMult - oldSizeMult) * this.baseHeight * .5;
+
     }
 
-    setY(y) {
-        if (y < this.pos.y) this.up = true; //If the player is moving, set these to true, so the ball bounces correctly
-        else if (y > this.pos.y) this.down = true;
+    setPos(p) {
+        if (p.y < this.pos.y) this.up = true; //If the player is moving, set these to true, so the ball bounces correctly
+        else if (p.y > this.pos.y) this.down = true;
         else {
             this.up = false;
             this.down = false;
         }
 
-        this.pos.y = y;
-        this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position again, just incase!
+        this.pos.set(p.x, p.y);
+        if (this.powerup != "Copter")
+            this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position again, just incase!
     }
 
     hit() {
@@ -404,17 +690,18 @@ class Player {
 
     serialize() {
         this.modX = this.pos.x;
-        if (this.aOrB == 'A') this.modX += 3; //Acounting for the different transparency in each sprite
-        else this.modX -= 7;
+        if (this.aOrB == 'A') this.modX += (this.displayWidth / 6);
+        if (this.aOrB == 'B') this.modX -= (this.displayWidth * .25); //Move yoshi over so it displays in the correct place
         let name = 'player' + this.aOrB;
         if (this.powerup == "Fire") name += "Fire";
+        if (this.powerup == "Copter") name += "Copter";
         return {
             'name': name,
             'x': this.modX,
             'y': this.pos.y,
             'width': this.displayWidth,
             'height': this.displayHeight,
-            'powerup': this.powerup
+            'powerup': this.powerup,
         };
     }
 }
@@ -424,33 +711,96 @@ class Game {
         this.players = [new Player('A'), new Player('B')];
         this.ball = new Ball(8, 8);
         this.fireballs = [];
+        this.shells = [];
+        this.saws = [];
+        this.lava = undefined;
+        this.ballStartY = HEIGHT / 2;
 
         this.lastPlayerHit = -1;
-        this.powerups = [new Powerup("Fire", "center")];
+        this.powerups = [];
 
+        this.amtOfRoundTypes = 5;
+        this.unusedRounds = [];
 
         this.countingDown = true;
         this.countdownTime = 3;
         this.countdownText = new Text("3", WIDTH / 2, HEIGHT * .25, 70);
         this.countdownInterval;
-        this.beginCountdown();
 
-        this.winnerText = new Text("WINS!", WIDTH / 2, HEIGHT * .25, 70);
+        this.winnerText = new Text("WINS!", WIDTH / 2, HEIGHT * .25, 40);
         this.showingWinner = false;
         this.gameHasEnded = false;
+
+        this.initNextRound(true); //Creates the first round
+        this.beginCountdown(true); //Starts a countdown, without changing the first round
     }
 
-    beginCountdown() {
+    initNextRound(firstRound = false) {
+        if (!firstRound) this.resetGame();
+        if (this.unusedRounds.length <= 0)
+            for (let i = 0; i < this.amtOfRoundTypes; i++) this.unusedRounds.push(i); //Makes an array with the possible rounds
+
+        //Picks and removes a random round
+        const round = this.unusedRounds.splice(Math.floor(Math.random() * this.unusedRounds.length), 1)[0];
+
+        switch (round) {
+            case 0:
+                this.powerups = [new Powerup("Fire", "center")];
+                break;
+            case 1:
+                this.powerups = [
+                    new Powerup("Big", "left"),
+                    new Powerup("Small", "right")
+                ];
+                break;
+            case 2:
+                this.shells = [];
+                for (let i = 0; i < 5; i++) {
+                    const y = (i * (HEIGHT / 5)) + 30;
+                    this.shells.push(new Shell(WIDTH / 2, y));
+                }
+                break;
+            case 3:
+                this.powerups = [new Powerup("Star", "center")];
+                this.saws = [];
+                for (let i = 0; i < 3; i++) {
+                    const y = (i * (HEIGHT / 3)) + 10;
+                    this.saws.push(new Saw(y, 1));
+                    this.saws.push(new Saw(y, -1));
+                }
+                break;
+            case 4:
+                this.lava = new Lava();
+                this.powerups = [new Powerup("Copter", "center")];
+                this.ball.reset(HEIGHT / 2, this.lava.pos.y);
+                break;
+        }
+    }
+
+    beginCountdown(firstRound = false) {
+        this.fireballs.map(f => f.stopMoving()); //Stop fireballs from moving
+        this.shells.map(s => s.stopMoving()); //Stop fireballs from moving
+        this.saws.map(s => s.stopMoving()); //Stop saws from moving
+        if (this.lava) this.lava.stopMoving();
         this.ball.vel.mult(0); //Stop ball moving during countdown
         this.countdownInterval = setInterval(() => { //Display Countdown for 3 seconds
-            this.countdownTime--;
-            this.countdownText.text = this.countdownTime > 0 ? this.countdownTime : "START";
+            this.countdownTime--; //Countdown
+            this.countdownText.text = this.countdownTime > 0 ? this.countdownTime : "START"; //Display 3 2 1 START
             if (this.countdownTime < 0) {
                 clearInterval(this.countdownInterval);
                 this.countdownTime = 3;
-                this.countdownText.text = "3";
+                this.countdownText.text = "3"; //Reset countdown stuff
                 this.countingDown = false;
-                this.resetGame();
+                if (!firstRound) this.initNextRound(); //Only create a new round if its not the first
+                else {
+                    this.saws.map(s => s.startMoving());
+                    if (this.lava) {
+                        this.lava.startMoving();
+                        this.ball.reset(HEIGHT / 2, this.lava.pos.y);
+                    } else {
+                        this.ball.reset(); //If its the first round, just reset some the ball
+                    }
+                }
             }
         }, 1000);
     }
@@ -458,57 +808,113 @@ class Game {
     resetGame() {
         this.lastPlayerHit = -1;
         this.fireballs = [];
-        this.powerups = [new Powerup("Fire", "center")];
+        this.shells = [];
+        this.saws = [];
+        this.lava = undefined;
+        this.ballStartY = HEIGHT / 2;
+        this.powerups = [];
+
         this.players[0].reset();
         this.players[1].reset();
         this.ball.reset();
     }
 
     update() {
-        if (!this.countingDown && !this.showingWinner) {
-            const bouncedOff = this.ball.update(this.players[0], this.players[1]);
+        if (!this.countingDown && !this.showingWinner) { //If the game is playing
+            const bouncedOff = this.ball.update(this.players[0], this.players[1]); //Move the ball and test if it bounced
+            if (bouncedOff > -1) this.lastPlayerHit = bouncedOff; //Who the ball just hit (if it did)
+            const canBounce = (this.lastPlayerHit > -1);
 
             for (let i = this.fireballs.length - 1; i >= 0; i--) {
                 const fireball = this.fireballs[i];
-                if (fireball.shouldDestroy()) {
+                if (fireball.shouldDestroy()) { //Remove firballs out of the screen
                     this.fireballs.splice(i, 1);
                 } else {
-                    const hit = fireball.update(this.players[0], this.players[1]);
-                    if (hit > -1) this.players[hit].hit();
+                    const hit = fireball.update(this.players[0], this.players[1]); //Check if fireball hit player
+                    if (hit > -1) this.players[hit].hit(); //Remove player who got hit
                 }
             }
 
-            if (bouncedOff > -1) this.lastPlayerHit = bouncedOff;
-            for (let powerup of this.powerups) {
-                if (!powerup.collected && this.ball.hitPowerup(powerup) && this.lastPlayerHit > -1) {
-                    powerup.collected = true;
-                    this.players[this.lastPlayerHit].setPowerup(powerup);
-                    console.log(`Player ${this.lastPlayerHit} got a powerup!`);
+            for (let i = this.shells.length - 1; i >= 0; i--) {
+                const shell = this.shells[i];
+                if (shell.shouldDestroy()) { //Remove shells out of the screen
+                    this.shells.splice(i, 1);
+                } else {
+                    const hit = shell.update(this.players[0], this.players[1], this.ball, canBounce); //Check if shell hit player
+                    if (hit > -1) this.players[hit].hit(); //Remove player who got hit
+                }
+            }
+
+            for (let i = this.saws.length - 1; i >= 0; i--) {
+                const saw = this.saws[i];
+                const hit = saw.update(this.players[0], this.players[1]); //Returns who got hit
+                if (hit == -2) //If it hit -2, that means it hit player with star power
+                    this.saws.splice(i, 1); //Destory saw
+                else if (hit > -1) this.players[hit].hit(); //If saw hit p1
+            }
+            if (this.lava) {
+                const hit = this.lava.update(this.players[0], this.players[1], this.ball);
+                if (hit[0]) this.players[0].hit();
+                if (hit[1]) this.players[1].hit();
+                if (hit[2] && !this.ball.respawning) {
+                    this.ball.startRespawning();
+                    this.lastPlayerHit = -1; //Since the ball is resetting
+                    setTimeout(() => {
+                        if (this.lava.pos.y < this.ballStartY + 25)
+                            this.ballStartY /= 2;
+                        this.ball.reset(this.ballStartY, this.lava.pos.y);
+                    }, 500);
+                }
+                if (this.players[0].powerup == "dead" && this.players[1].powerup == "dead" &&
+                    this.lava.pos.y < 0) { //If the lava rises, but no one scores, start next round
+                    const winner = this.winner();
+                    if (winner == -1) { //Someone scored but game isn't over
+                        this.countingDown = true; //Stop games from updating
+                        this.beginCountdown();
+                    } else { //Someone has won
+                        this.winnerText.text = `W${winner}`;
+                        this.showingWinner = true; //Stops game from updating
+                        this.fireballs.map(f => f.stopMoving());
+                        this.saws.map(s => s.stopMoving());
+                        this.shells.map(s => s.stopMoving());
+                        if (this.lava) this.lava.stopMoving();
+                        setTimeout(() => {
+                            this.endGame();
+                        }, 2500);
+                    }
+                }
+            }
+
+            if (this.lastPlayerHit > -1) {
+                for (let powerup of this.powerups) {
+                    if (!powerup.collected && this.ball.hitPowerup(powerup)) { //Test if a player just got a powerup
+                        powerup.collected = true; //Will stop showing the powerup
+                        this.players[this.lastPlayerHit].setPowerup(powerup); //Gives the powerup to that player
+                        if (powerup.name == "Copter") {
+                            this.ball.startRespawning(); //Stop the ball so no one scores
+                            this.lava.riseFast();
+                            setTimeout(() => {
+                                const losingSide = (this.lastPlayerHit == 0) ? WIDTH + 100 : -100;
+                                const whoScored = [true, losingSide];
+                                this.score(whoScored);
+                            }, 2250);
+                        }
+                    }
                 }
             }
         }
-        const scored = this.ball.checkScore();
+        const whoScored = this.ball.checkScore();
 
-        if (scored[0] == true && !this.countingDown && !this.showingWinner) {
-            if (scored[1] < WIDTH / 2) this.players[1].score++;
-            else this.players[0].score++;
-
-            const winner = this.winner();
-            if (winner == -1) { //Someone scored but game isn't over
-                this.countingDown = true;
-                this.beginCountdown();
-            } else { //Someone has won
-                this.winnerText.text = `W${winner}`;
-                this.showingWinner = true;
-                setTimeout(() => {
-                    this.endGame()
-                }, 2500);
-            }
+        if (whoScored[0] == true && !this.countingDown && !this.showingWinner) { //Check if someone has scored
+            this.score(whoScored);
         }
 
         let movingSprites = [];
-        if (!this.countingDown && !this.showingWinner) movingSprites.push(this.ball.serialize());
+        if (!this.countingDown && !this.showingWinner && !this.ball.respawning) movingSprites.push(this.ball.serialize());
         movingSprites = movingSprites.concat(this.fireballs.map(f => f.serialize()));
+        movingSprites = movingSprites.concat(this.shells.map(s => s.serialize()));
+        movingSprites = movingSprites.concat(this.saws.map(s => s.serialize()));
+        if (this.lava) movingSprites.push(this.lava.serialize());
 
         const gameData = {
             "sprites": [
@@ -524,6 +930,27 @@ class Game {
         if (this.showingWinner) gameData.text.push(this.winnerText.serialize());
 
         return gameData;
+    }
+
+    score(scored) {
+        if (scored[1] < WIDTH / 2) this.players[1].score++; //Increase score for whoever just scored
+        else this.players[0].score++;
+
+        const winner = this.winner();
+        if (winner == -1) { //Someone scored but game isn't over
+            this.countingDown = true; //Stop games from updating
+            this.beginCountdown();
+        } else { //Someone has won
+            this.winnerText.text = `W${winner}`;
+            this.showingWinner = true; //Stops game from updating
+            this.fireballs.map(f => f.stopMoving());
+            this.saws.map(s => s.stopMoving());
+            this.shells.map(s => s.stopMoving());
+            if (this.lava) this.lava.stopMoving();
+            setTimeout(() => {
+                this.endGame();
+            }, 2500);
+        }
     }
 
     endGame() {
@@ -556,8 +983,8 @@ class Game {
 
     inp(pIndex, data) {
         switch (data.type) {
-            case "yPos":
-                this.players[pIndex].setY(data.data);
+            case "pos":
+                this.players[pIndex].setPos(data.data);
                 break;
             case "shoot":
                 this.shoot(pIndex);
@@ -572,8 +999,8 @@ class Room {
         this.clientASocket = a;
         this.clientBSocket = b;
         this.game = new Game();
-        console.log("Joining room");
         this.joinRoom();
+        console.log("Joined room");
     }
 
     update() {
@@ -666,12 +1093,12 @@ io.sockets.on('connection', socket => {
         addToQueue(socket);
     });
 
-    socket.on('yPos', y => {
+    socket.on('pos', pos => {
         const room = roomOf(socket);
         if (room != false) {
             const data = {
-                type: 'yPos',
-                data: y
+                type: 'pos',
+                data: pos
             }
             room.recievedInp(socket.id, data);
         }
