@@ -13,12 +13,17 @@ let marioOrYoshi;
 const spriteNames = [
     'playerA',
     'playerAFire',
+    'playerACopter',
     'playerB',
     'playerBFire',
+    'playerBCopter',
     'ball',
     'fireball',
     'shell',
     'saw',
+    'lava',
+    'copter',
+    // 'copterHat',
     'fireflower',
     'big',
     'small',
@@ -26,6 +31,7 @@ const spriteNames = [
     'powerupBorder',
     'divider'
 ];
+let lavaColor;
 
 const totalToLoad = spriteNames.length + 1; //The + 1 is for loading the font
 let amtLoaded = 0;
@@ -43,6 +49,7 @@ function setup() {
     function loaded() {
         amtLoaded++;
         if (amtLoaded >= totalToLoad) { //Once assets have loaded, connect to the server
+            lavaColor = color(255, 56, 4);
             status = "menu";
             joinButton.show();
             socket = io();
@@ -152,23 +159,33 @@ function renderGame() {
     scale(scaleFactor);
     fill(255);
     if (gameData) {
-        noStroke();
-        textAlign(CENTER, CENTER);
-        textSize(20);
-        text(gameData.score[0], origWidth * .45, 25);
-        text(gameData.score[1], origWidth * .55, 25);
-
         const divider = sprites['divider'];
-        image(divider, origWidth / 2 - divider.width / 2, 0, 2, origHeight);
+        image(divider, origWidth / 2 - divider.width / 2, 0, 2, origHeight); //Dotted line in center
 
-        for (item of gameData.sprites) {
+        for (item of gameData.sprites) { //Shows players
             if (item.name != player.nameWithPowerup && item.powerup != "dead") {
-                image(sprites[item.name], item.x, item.y, item.width, item.height);
+                if (item.powerup == "Star") {
+                    push();
+                    const min = 0;
+                    const max = 255;
+                    const inc = (max - min) / 3;
+                    const first = random(min + (inc * 2), max);
+                    const second = random(min + (inc * 1), min + (inc * 2));
+                    const third = random(min + (inc), min + (inc));
+                    let rand = random(1);
+                    if (rand < 1 / 3) tint(first, second, third); //Mostly Red
+                    else if (rand < 2 / 3) tint(first, first, third); //Mostly yellow
+                    else tint(second, second, first); //Mostly light Blue
+                    image(sprites[item.name], item.x, item.y, item.width, item.height);
+                    pop();
+                } else {
+                    image(sprites[item.name], item.x, item.y, item.width, item.height);
+                }
             }
         }
 
         const margin = 10;
-        for (powerup of gameData.powerups) {
+        for (powerup of gameData.powerups) { //Shows powerups
             const diameter = max(powerup.width, powerup.height);
             const centerX = powerup.x + (powerup.width / 2);
             const centerY = powerup.y + (powerup.height / 2);
@@ -178,6 +195,7 @@ function renderGame() {
                 if (powerup.name == "Fire") name = "fireflower";
                 if (powerup.name == "Big") name = "big";
                 if (powerup.name == "Small") name = "small";
+                if (powerup.name == "Copter") name = "copter";
                 if (powerup.name == "Star") {
                     name = "star";
                     push();
@@ -198,16 +216,34 @@ function renderGame() {
                 }
             }
         }
-        if (movingSprites.length > 0) {
+        if (movingSprites.length > 0) { //Shows Ball, Fireballs, lava, shells, etc
             for (let movingSprite of movingSprites) {
                 if (!justReceivedData) {
-                    movingSprite.update();
+                    if (movingSprite.name == "lava") movingSprite.update(false);
+                    else movingSprite.update();
                 }
                 movingSprite.show();
+                if (movingSprite.name == "lava") {
+                    for (let i = movingSprite.pos.x - movingSprite.width; i >= -movingSprite.width; i -= movingSprite.width) {
+                        movingSprite.show(i);
+                    }
+                    for (let i = movingSprite.pos.x + movingSprite.width; i <= origWidth; i += movingSprite.width) {
+                        movingSprite.show(i);
+                    }
+                    fill(lavaColor);
+                    noStroke();
+                    rect(0, movingSprite.pos.y + movingSprite.height - 3, origWidth, origHeight - movingSprite.pos.y + 10);
+                }
             }
             justReceivedData = false;
         }
 
+        noStroke();
+        textAlign(CENTER, CENTER);
+        fill(255);
+        textSize(20);
+        text(gameData.score[0], origWidth * .45, 25); //Shows scores
+        text(gameData.score[1], origWidth * .55, 25);
     } else {
         console.log("No game data yet!");
     }
@@ -217,7 +253,7 @@ function renderGame() {
     if (gameData) {
         noStroke();
         fill(255);
-        for (txt of gameData.text) {
+        for (txt of gameData.text) { //Shows countdown, and winner
             textSize(txt.size);
 
             if (txt.text == "START") txt.text = `START`;
@@ -238,7 +274,7 @@ function renderGame() {
     stroke(255);
     const weight = 2;
     strokeWeight(weight);
-    rect(weight / 2, weight / 2, width - weight, height - weight);
+    rect(weight / 2, weight / 2, width - weight, height - weight); //Border
 }
 
 function windowResized() {
@@ -344,10 +380,15 @@ class Player {
     }
 
     setPowerup(p) {
+        if (this.powerup == "Copter" && p == null) {
+            this.reset(); //Reset if it just had copter
+        }
+
         if (p != this.powerup) {
             this.powerup = p;
             this.nameWithPowerup = this.name;
             if (this.powerup == "Fire") this.nameWithPowerup += "Fire";
+            if (this.powerup == "Copter") this.nameWithPowerup += "Copter";
             else if (this.powerup == "dead") this.pos.y = (origHeight / 2) - (this.height / 2); //Reset pos if you die
             else if (this.powerup == "Big") {
                 const margin = 50;
@@ -373,7 +414,6 @@ class Player {
                 this.height = this.baseHeight * this.sizeMult;
                 this.displayWidth = this.baseDisplayWidth * this.sizeMult;
                 this.displayHeight = this.baseDisplayHeight * this.sizeMult;
-                //TODO The X calculations are still slightly incorrect, I think
                 if (this.aOrB == 'A') {
                     this.pos.x = margin - (this.baseWidth / this.sizeMult);
                 } else if (this.aOrB == 'B') {
@@ -430,10 +470,14 @@ class Player {
     }
 
     update() {
-        if (this.powerup != "dead") {
+        if (this.powerup != "dead" && this.powerup != "Copter") {
             if (this.up) this.pos.y -= (this.speed * deltaTime / this.sizeMult); //Move up
             if (this.down) this.pos.y += (this.speed * deltaTime / this.sizeMult); //Move down
             this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position
+
+        }
+        if (this.powerup == "Copter") {
+            this.pos.y = lerp(this.pos.y, -75, .05);
         }
         if (this.pos.x != this.prevPos.x || this.pos.y != this.prevPos.y) { //If the player has moved, send position to server
             const data = {
@@ -467,7 +511,7 @@ class MovingSprite {
         this.extra = extra;
     }
 
-    show() {
+    show(x = this.pos.x) {
         if (this.name == "fireball" || this.name == "saw") {
             push();
             translate(this.pos.x + this.width / 2, this.pos.y + this.height / 2);
@@ -475,7 +519,7 @@ class MovingSprite {
             image(sprites[this.name], -this.width / 2, -this.height / 2, this.width, this.height);
             pop();
         } else {
-            image(sprites[this.name], this.pos.x, this.pos.y, this.width, this.height);
+            image(sprites[this.name], x, this.pos.y, this.width, this.height);
         }
     }
 
@@ -483,12 +527,14 @@ class MovingSprite {
         this.vel.setMag(this.speed);
     }
 
-    update() {
+    update(shouldBounce = true) {
         this.vel.setMag(deltaTime * this.speed);
         this.pos.add(this.vel);
 
-        this.bounceWalls();
-        this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor
+        if (shouldBounce) {
+            this.bounceWalls();
+            this.pos.y = Math.max(Math.min(origHeight - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor
+        }
     }
 
     setPos(x, y) {
