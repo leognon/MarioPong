@@ -142,7 +142,6 @@ class Ball {
             const range = maxAng - minAng;
             ang = (Math.random() * range) + minAng;
         }
-        ang = 0; //TODO REMOVE THIS
 
         this.vel = new Vector(Math.cos(ang) * this.speed, Math.sin(ang) * this.speed);
         if (Math.random() < .5) this.vel.x *= -1;
