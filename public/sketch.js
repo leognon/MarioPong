@@ -3,6 +3,7 @@ let status = "loading";
 
 let sprites;
 let joinButton;
+let creditsDiv;
 let widthToHeight;
 let cnv;
 let origWidth = 640;
@@ -23,7 +24,6 @@ const spriteNames = [
     'saw',
     'lava',
     'copter',
-    // 'copterHat',
     'fireflower',
     'big',
     'small',
@@ -52,17 +52,21 @@ function setup() {
             lavaColor = color(255, 56, 4);
             status = "menu";
             joinButton.show();
+            creditsDiv.show();
             socket = io();
             socket.on('status', s => {
                 status = s;
-                if (status == "waiting") joinButton.hide();
+                if (status == "waiting") {
+                    joinButton.hide();
+                    creditsDiv.hide();
+                }
                 if (status == "menu") {
                     movingSprites = [];
                     gameData = null;
                     joinButton.style("display", "inline");
+                    creditsDiv.style("display", "inline");
                     sizeDOMCorrectly(); //Incase window resized in-game
                 }
-                console.log(status);
             });
             socket.on('gameData', d => {
                 movingSprites = [];
@@ -100,6 +104,7 @@ function setup() {
 
     cnv = createCanvas(origWidth, origHeight);
     joinButton = select('#joinB');
+    creditsDiv = select('#creditsDiv');
     joinButton.mouseClicked(() => {
         socket.emit('addToQueue', true);
     });
@@ -142,9 +147,10 @@ function render() {
         background(0);
         textSize(50 * scaleFactor);
         text("MENU", width / 2, height * .3);
-        textSize(7 * scaleFactor);
-        textAlign(LEFT);
-        text("Font:\"Press Start K\" by codeman38", 10, height - 10);
+        // text(, 10, height - 35);
+        // // text("'s Youtube Video \"If Pong had Super Mario Physics\"", 10, height - 25);
+
+        // // text(", 10, height - 25);
     } else if (status == "waiting") {
         background(0);
         textSize(30 * scaleFactor);
