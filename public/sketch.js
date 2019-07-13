@@ -13,6 +13,7 @@ new p5(() => {
     let scaleFactor = 1;
     let marioOrYoshi;
 
+
     const spriteNames = [
         'playerA',
         'playerAFire',
@@ -50,6 +51,9 @@ new p5(() => {
     let movingSprites = [];
     let justReceivedData = false;
     let gameData = null;
+
+    const disconnectMsg = "Your opponent\nhas disconnected.";
+    let showDisconnectMsg = false;
 
     let deltaTime = 0;
     let lastFrameTime = Date.now();
@@ -101,6 +105,12 @@ new p5(() => {
                     player = new Player(aOrB);
                     status = "joined";
                 });
+                socket.on('gotDisconnected', () => {
+                    showDisconnectMsg = true;
+                    setTimeout(() => {
+                        showDisconnectMsg = false; //Show the msg for 3 seconds
+                    }, 3000);
+                });
             }
         }
         masterVolume(.3);
@@ -135,6 +145,16 @@ new p5(() => {
             renderGame();
         } else {
             render();
+        }
+        if (showDisconnectMsg) {
+            noStroke();
+            textSize(25 * scaleFactor);
+            textAlign(CENTER);
+            const w = textWidth(disconnectMsg) * .6;
+            fill(0);
+            rect(width / 2 - (w / 2), (height * .15) - (25 * scaleFactor), w, 65 * scaleFactor);
+            fill(255, 0, 0);
+            text(disconnectMsg, width / 2, height * .15);
         }
     }
 

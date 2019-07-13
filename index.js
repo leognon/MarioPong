@@ -731,10 +731,8 @@ class Player {
 }
 
 /*
-TODO Send disconnect message to play who is kicked out of their game (Possibly allow a few seconds for the other player to reconnect)
 TODO Add copyright for Nintendo
 TODO ONLINE PLAYER COUNT
-TODO Wrap everything in an ananymous function
 TODO ADD INSTRUCTIONS AND CONTROLS
 */
 class Game {
@@ -1082,6 +1080,7 @@ class Room {
     }
 
     clientDisconnected(id) {
+        io.sockets.to(this.roomId).emit('gotDisconnected');
         if (this.clientASocket.id == id) this.leaveRoom(this.clientBSocket.id);
         else if (this.clientBSocket.id == id) this.leaveRoom(this.clientASocket.id);
         else console.log("Tried disconnecting a client who wasn't here!");
