@@ -14,9 +14,15 @@ body {
 }
 
 button {
+    display: none;
+    z-index: 1;
+    width: 20%;
+    height: 10%;
+    padding: 0px;
     background-color: rgb(255, 255, 255);
     font-family: 'Font';
-    font-size: 20pt;
+    font-size: 150%;
+    /* font-size: 20pt; */
     color: black;
     border: none;
     -webkit-transition-duration: 0.2s;
@@ -25,11 +31,13 @@ button {
 }
 
 button:hover {
-    font-size: 22pt;
+    font-size: 170%;
+    /* font-size: 22pt; */
 }
 
 button:active {
-    font-size: 23pt;
+    font-size: 175%;
+    /* font-size: 23pt; */
 }
 
 #creditsDiv {

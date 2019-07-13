@@ -1,4 +1,5 @@
 //Credit to Daniel Shiffman at https://github.com/CodingTrain/website/tree/master/Node/sockets for some of this code
+//This project was started June 10, 2019
 const express = require('express');
 const app = express();
 const server = app.listen(process.env.PORT || 3000);
@@ -150,6 +151,7 @@ class Ball {
     }
 
     update(p1, p2) {
+        let bouncedOffAnything = false;
         let bouncedOff = -1;
         if (!this.respawning) {
             this.prevPos = this.pos.copy();
@@ -158,10 +160,17 @@ class Ball {
 
             this.pos.add(this.vel);
 
-            this.bounceWalls();
+            if (this.bounceWalls()) bouncedOffAnything = true;
             this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
-            if (p1.powerup != "dead" && this.hitPaddle(p1, -1)) bouncedOff = 0;
-            if (p2.powerup != "dead" && this.hitPaddle(p2, 1)) bouncedOff = 1
+
+            if (p1.powerup != "dead" && this.hitPaddle(p1, -1)) {
+                bouncedOff = 0;
+                bouncedOffAnything = true;
+            }
+            if (p2.powerup != "dead" && this.hitPaddle(p2, 1)) {
+                bouncedOff = 1;
+                bouncedOffAnything = true;
+            }
 
             if (this.vel.magSq() > 225) { //Make sure the ball never goes too fast (can't go above 15 speed)
                 this.vel.setMag(15);
@@ -179,13 +188,15 @@ class Ball {
                 this.fixMag();
             }
         }
-        return bouncedOff;
+        return [bouncedOff, bouncedOffAnything];
     }
 
     bounceWalls() { //Bounce off floor and ceiling
         if ((this.pos.y <= 0 && this.vel.y < 0) || (this.pos.y >= HEIGHT - this.height && this.vel.y > 0)) {
             this.vel.y *= -1;
+            return true;
         }
+        return false;
     }
 
     checkScore() {
@@ -214,8 +225,8 @@ class Ball {
             }
             if (this.hitRect(yChanged, p)) { //If it is bouncing off the top/bottom
                 if (this.pos.y + this.height / 2 > p.pos.y + p.height / 2) { //If its hitting the bottom
+                    if (Math.abs(this.vel.y) / this.vel.y == -1) hasBounced = true; //Only bounced if dir changed
                     this.vel.y = Math.abs(this.vel.y); //Make it bounce down
-                    hasBounced = true;
                     if (p.down) { //If paddle is moving up, bounce it up more
                         const nextPos = new Vector(this.pos.x + this.vel.x, this.pos.y + this.vel.y);
                         if (this.hitRect(nextPos, nextPos, p.width, p.height)) {
@@ -226,8 +237,8 @@ class Ball {
                         }
                     }
                 } else { //If its hitting the top
+                    if (Math.abs(this.vel.y) / this.vel.y == 1) hasBounced = true; //Only bounced if dir changed
                     this.vel.y = -Math.abs(this.vel.y); //make it bounce up
-                    hasBounced = true;
                     if (p.up) {
                         const nextPos = new Vector(this.pos.x - this.vel.x, this.pos.y + this.vel.y);
                         if (this.hitRect(nextPos, nextPos, p.width, p.height)) {
@@ -290,11 +301,11 @@ class Saw {
         let playerHit = -1;
         let hitPlayerWithStar = false;
 
-        if (this.hitPaddle(p1)) {
+        if (this.hitPaddle(p1) && p1.powerup != "dead") {
             if (p1.powerup != "Star") playerHit = 0; //If it hit a vulnerable player
             else hitPlayerWithStar = true; //If it hit an invincible player
         }
-        if (this.hitPaddle(p2)) {
+        if (this.hitPaddle(p2) && p2.powerup != "dead") {
             if (p2.powerup != "Star") playerHit = 1; //If it hit a vulnerable player
             else hitPlayerWithStar = true; //If it hit an invincible player
         }
@@ -364,12 +375,13 @@ class Fireball {
     }
 
     update(p1, p2) {
+        let bouncedOffAnything = false;
         let hitPlayer = -1;
 
         this.vel.setMag(deltaTime * this.speed);
         this.pos.add(this.vel);
 
-        this.bounceWalls();
+        if (this.bounceWalls()) bouncedOffAnything = true;
         this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
         if (p1.powerup != "dead" && this.hitPaddle(p1)) hitPlayer = 0;
         if (p2.powerup != "dead" && this.hitPaddle(p2)) hitPlayer = 1;
@@ -380,7 +392,7 @@ class Fireball {
         }
 
         this.lastRot++;
-        return hitPlayer;
+        return [hitPlayer, bouncedOffAnything];
     }
 
     shouldDestroy() {
@@ -390,7 +402,9 @@ class Fireball {
     bounceWalls() { //Bounce off floor and ceiling
         if ((this.pos.y <= 0 && this.vel.y < 0) || (this.pos.y >= HEIGHT - this.height && this.vel.y > 0)) {
             this.vel.y *= -1;
+            return true;
         }
+        return false;
     }
 
     stopMoving() {
@@ -443,24 +457,27 @@ class Shell {
     }
 
     update(p1, p2, ball, canBounce) {
+        let bouncedOffAnything = false;
         let hitPlayer = -1;
 
         this.vel.setMag(deltaTime * this.speed);
         this.pos.add(this.vel);
 
-        this.bounceWalls();
+        if (this.bounceWalls()) bouncedOffAnything = true;
         this.pos.y = Math.max(Math.min(HEIGHT - this.height, this.pos.y), 0); //Constrain vertical position (can't go into floor)
 
 
         if (canBounce && !this.hasBounced && this.circleToRect(this.pos.x, this.pos.y, this.width * .4, ball.pos.x, ball.pos.y, ball.width, ball.height)) {
             this.vel.set(ball.vel.x, ball.vel.y);
             this.hasBounced = true;
+            bouncedOffAnything = true;
+            console.log("Shell is bouncing now!!");
         }
 
         if (p1.powerup != "dead" && this.hitPaddle(p1)) hitPlayer = 0;
         if (p2.powerup != "dead" && this.hitPaddle(p2)) hitPlayer = 1;
 
-        return hitPlayer;
+        return [hitPlayer, bouncedOffAnything];
     }
 
     shouldDestroy() {
@@ -470,7 +487,9 @@ class Shell {
     bounceWalls() { //Bounce off floor and ceiling
         if ((this.pos.y <= 0 && this.vel.y < 0) || (this.pos.y >= HEIGHT - this.height && this.vel.y > 0)) {
             this.vel.y *= -1;
+            return true;
         }
+        return false;
     }
 
     stopMoving() {
@@ -524,8 +543,8 @@ class Lava {
         }
         this.pos.y = Math.max(-15, this.pos.y); //Max height
 
-        if (p1.pos.y + p1.height > this.pos.y) hit[0] = true;
-        if (p2.pos.y + p2.height > this.pos.y) hit[1] = true;
+        if (p1.powerup != "dead" && p1.pos.y + p1.height > this.pos.y) hit[0] = true;
+        if (p2.powerup != "dead" && p2.pos.y + p2.height > this.pos.y) hit[1] = true;
         if (ball.pos.y + ball.height > this.pos.y) hit[2] = true;
 
         return hit;
@@ -632,6 +651,11 @@ class Player {
         this.up = false; //Is the up key pressed
         this.down = false; //Is the down key pressed
         this.speed = .4; //Vertical movement speed
+        this.justShot = false;
+    }
+
+    shoot() {
+        this.justShot = true;
     }
 
     setPowerup(p) {
@@ -706,6 +730,13 @@ class Player {
     }
 }
 
+/*
+TODO Send disconnect message to play who is kicked out of their game (Possibly allow a few seconds for the other player to reconnect)
+TODO Add copyright for Nintendo
+TODO ONLINE PLAYER COUNT
+TODO Wrap everything in an ananymous function
+TODO ADD INSTRUCTIONS AND CONTROLS
+*/
 class Game {
     constructor() {
         this.players = [new Player('A'), new Player('B')];
@@ -820,9 +851,12 @@ class Game {
     }
 
     update() {
+        let sounds = [];
+
         if (!this.countingDown && !this.showingWinner) { //If the game is playing
             const bouncedOff = this.ball.update(this.players[0], this.players[1]); //Move the ball and test if it bounced
-            if (bouncedOff > -1) this.lastPlayerHit = bouncedOff; //Who the ball just hit (if it did)
+            if (bouncedOff[1]) sounds.push("bounce"); //If the ball bounced off a wall
+            if (bouncedOff[0] > -1) this.lastPlayerHit = bouncedOff[0]; //Who the ball just hit (if it did)
             const canBounce = (this.lastPlayerHit > -1);
 
             for (let i = this.fireballs.length - 1; i >= 0; i--) {
@@ -831,7 +865,13 @@ class Game {
                     this.fireballs.splice(i, 1);
                 } else {
                     const hit = fireball.update(this.players[0], this.players[1]); //Check if fireball hit player
-                    if (hit > -1) this.players[hit].hit(); //Remove player who got hit
+                    if (hit[0] > -1) { //If it hit a player
+                        this.players[hit[0]].hit(); //Remove player who got hit
+                        sounds.push("hit");
+                    }
+                    if (hit[1]) { //If it bounced
+                        sounds.push("bounce");
+                    }
                 }
             }
 
@@ -841,22 +881,38 @@ class Game {
                     this.shells.splice(i, 1);
                 } else {
                     const hit = shell.update(this.players[0], this.players[1], this.ball, canBounce); //Check if shell hit player
-                    if (hit > -1) this.players[hit].hit(); //Remove player who got hit
+                    if (hit[0] > -1) {
+                        this.players[hit[0]].hit();
+                        sounds.push("hit");
+                    } //Remove player who got hit
+                    if (hit[1]) {
+                        sounds.push("bounce");
+                    }
                 }
             }
 
             for (let i = this.saws.length - 1; i >= 0; i--) {
                 const saw = this.saws[i];
                 const hit = saw.update(this.players[0], this.players[1]); //Returns who got hit
-                if (hit == -2) //If it hit -2, that means it hit player with star power
+                if (hit == -2) { //If it hit -2, that means it hit player with star power
                     this.saws.splice(i, 1); //Destory saw
-                else if (hit > -1) this.players[hit].hit(); //If saw hit p1
+                } else if (hit > -1) {
+                    this.players[hit].hit(); //If saw hit p1
+                    sounds.push("die");
+                }
             }
             if (this.lava) {
                 const hit = this.lava.update(this.players[0], this.players[1], this.ball);
-                if (hit[0]) this.players[0].hit();
-                if (hit[1]) this.players[1].hit();
+                if (hit[0]) {
+                    this.players[0].hit();
+                    sounds.push("die");
+                }
+                if (hit[1]) {
+                    this.players[1].hit();
+                    sounds.push("die");
+                }
                 if (hit[2] && !this.ball.respawning) {
+                    sounds.push("die");
                     this.ball.startRespawning();
                     this.lastPlayerHit = -1; //Since the ball is resetting
                     setTimeout(() => {
@@ -888,6 +944,7 @@ class Game {
             if (this.lastPlayerHit > -1) {
                 for (let powerup of this.powerups) {
                     if (!powerup.collected && this.ball.hitPowerup(powerup)) { //Test if a player just got a powerup
+                        sounds.push("collect");
                         powerup.collected = true; //Will stop showing the powerup
                         this.players[this.lastPlayerHit].setPowerup(powerup); //Gives the powerup to that player
                         if (powerup.name == "Copter") {
@@ -901,6 +958,15 @@ class Game {
                         }
                     }
                 }
+            }
+
+            if (this.players[0].justShot) { //Sound effects for fireball shooting
+                sounds.push("shoot");
+                this.players[0].justShot = false;
+            }
+            if (this.players[1].justShot) {
+                sounds.push("shoot");
+                this.players[1].justShot = false;
             }
         }
         const whoScored = this.ball.checkScore();
@@ -916,6 +982,8 @@ class Game {
         movingSprites = movingSprites.concat(this.saws.map(s => s.serialize()));
         if (this.lava) movingSprites.push(this.lava.serialize());
 
+        sounds = sounds.filter((s, pos) => sounds.indexOf(s) == pos);
+
         const gameData = {
             "sprites": [
                 this.players[0].serialize(), //Make sure the players stay in this order!
@@ -924,6 +992,7 @@ class Game {
             "score": [this.players[0].score, this.players[1].score],
             "powerups": this.powerups.map(p => p.serialize()),
             "movingSprites": movingSprites,
+            "sounds": sounds,
             "text": []
         };
         if (this.countingDown) gameData.text.push(this.countdownText.serialize());
@@ -978,6 +1047,7 @@ class Game {
             pos.y += this.players[pIndex].height / 2;
             const fireball = new Fireball(pos, dir);
             this.fireballs.push(fireball);
+            this.players[pIndex].shoot(); //Lets the player know they shot, for sound effects
         }
     }
 
@@ -1087,7 +1157,7 @@ function removeFromQueue(socket) {
 }
 
 io.sockets.on('connection', socket => {
-    console.log(`We have a new client: ${socket.id}`);
+    console.log(`We have a new client: ${socket.id.substring(0,5)}`);
 
     socket.on('addToQueue', () => {
         addToQueue(socket);
@@ -1118,12 +1188,12 @@ io.sockets.on('connection', socket => {
         const room = roomOf(socket);
         if (clientsQueue.indexOf(socket) >= 0) {
             removeFromQueue(socket); //If they disconnect in queue, remove them from queue
-            console.log(`Client ${socket.id} has disconnected from queue`);
+            console.log(`Client ${socket.id.substring(0,5)} disconnected from queue`);
         } else if (room != false) { //If they are in game
             room.clientDisconnected(socket.id); //end that game and kick out the other client
-            console.log(`Client ${socket.id} has disconnected from a game`);
+            console.log(`Client ${socket.id.substring(0,5)} disconnected from a game`);
         } else {
-            console.log(`Client ${socket.id} has disconnected from the menu`);
+            console.log(`Client ${socket.id.substring(0,5)} disconnected from the menu`);
         }
     });
 });

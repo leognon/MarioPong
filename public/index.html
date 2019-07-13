@@ -2,9 +2,10 @@
 <html lang="en">
     <head>
         <meta charset="utf-8">
-        <title>Multiplayer Pong</title>
+        <title>Mario Pong</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/p5.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/addons/p5.dom.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/addons/p5.sound.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
         <link rel="shortcut icon" type="image/png" href="/favicon.png" />
         <link rel="stylesheet" type="text/css" href="style.css">
@@ -13,7 +14,7 @@
     <body>
         <script src="sketch.js"></script>
 
-        <button id="joinB" style="display: none; z-index: 1; width: 20%; height: 10%; padding: 0px;">Join</button>
+        <button id="joinB">Join</button>
         <div id="creditsDiv">
             <p class="credits">Game Idea and Art by<a class="credits" href="https://www.youtube.com/channel/UCNK813T2BNBwcfDPDTPeMPA/">Level Up</a></p>
             <p class="credits">Check out their Youtube video<a class="credits" href="https://www.youtube.com/watch?v=c7L4cDRqnAk">"If Pong had Super Mario Physics"</a></p>
