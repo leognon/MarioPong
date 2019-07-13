@@ -146,15 +146,37 @@ function render() {
     } else if (status == "menu") {
         background(0);
         textSize(50 * scaleFactor);
-        text("MENU", width / 2, height * .3);
-        // text(, 10, height - 35);
-        // // text("'s Youtube Video \"If Pong had Super Mario Physics\"", 10, height - 25);
-
-        // // text(", 10, height - 25);
+        text("MARIO\nPONG", width / 2 + 3, height * .15);
     } else if (status == "waiting") {
         background(0);
         textSize(30 * scaleFactor);
-        text("WAITING FOR\nANOTHER PLAYER", width / 2, height * .3);
+        text("WAITING FOR\nANOTHER PLAYER", width / 2, height * .15);
+    }
+    if (status == "menu" || status == "waiting") {
+        push();
+        scale(scaleFactor); //This all just draws the menu
+        const divider = sprites["divider"];
+        image(divider, origWidth / 2 - divider.width / 2, 0, 2, origHeight); //Dotted line in center
+        image(sprites["ball"], 90, 160, 8, 8);
+        image(sprites["fireball"], 490, 220, 40, 40);
+        push();
+        translate(221, 309);
+        rotate(PI / 2);
+        image(sprites["fireball"], -20, -20, 40, 40);
+        pop();
+        const margin = 10;
+        const diameter = 41.6;
+        const centerX = 320;
+        const centerY = 200;
+        image(sprites['powerupBorder'], centerX - (diameter / 2) - margin, centerY - (diameter / 2) - margin, diameter + (margin * 2), diameter + (margin * 2)); //Border Image
+        image(sprites['playerAFire'], 54, 56, 24, 50);
+        image(sprites['playerB'], 561, 69, 34.3, 50);
+        pop();
+        noFill();
+        stroke(255);
+        const weight = 2;
+        strokeWeight(weight);
+        rect(weight / 2, weight / 2, width - weight, height - weight); //Border
     }
 }
 

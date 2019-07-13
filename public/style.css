@@ -13,6 +13,25 @@ body {
     src: url('./sprites/prstartk.otf');
 }
 
+button {
+    background-color: rgb(255, 255, 255);
+    font-family: 'Font';
+    font-size: 20pt;
+    color: black;
+    border: none;
+    -webkit-transition-duration: 0.2s;
+    /* Safari */
+    transition-duration: 0.2s;
+}
+
+button:hover {
+    font-size: 22pt;
+}
+
+button:active {
+    font-size: 23pt;
+}
+
 #creditsDiv {
     display: none;
     z-index: 1;
