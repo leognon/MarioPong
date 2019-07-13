@@ -8,18 +8,23 @@ body {
     overflow: hidden;
 }
 
-/* .centered {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    width: 100%;
-    text-align: center;
-    font-size: 18px;
-} */
+@font-face {
+    font-family: 'Font';
+    src: url('./sprites/prstartk.otf');
+}
 
-/* canvas {
+#creditsDiv {
+    display: none;
+    z-index: 1;
+    padding: 0px;
     position: absolute;
-    left: 0;
-    top: 50%;
-    width: 100%;
-} */
+    left: 10px;
+    bottom: 10px;
+}
+
+.credits {
+    font-family: 'Font';
+    font-size: 7pt;
+    margin: 8px;
+    color: white;
+}
