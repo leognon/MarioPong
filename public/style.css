@@ -13,8 +13,36 @@ body {
     src: url('./sprites/prstartk.otf');
 }
 
+button {
+    display: none;
+    z-index: 1;
+    width: 20%;
+    height: 10%;
+    padding: 0px;
+    background-color: rgb(255, 255, 255);
+    font-family: 'Font';
+    font-size: 150%;
+    /* font-size: 20pt; */
+    color: black;
+    border: none;
+    -webkit-transition-duration: 0.2s;
+    /* Safari */
+    transition-duration: 0.2s;
+}
+
+button:hover {
+    font-size: 170%;
+}
+
+button:active {
+    font-size: 175%;
+}
+
+
+
 #creditsDiv {
     display: none;
+    width: 100%;
     z-index: 1;
     padding: 0px;
     position: absolute;
@@ -27,4 +55,8 @@ body {
     font-size: 7pt;
     margin: 8px;
     color: white;
+}
+
+a {
+    margin: 0px !important;
 }

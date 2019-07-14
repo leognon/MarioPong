@@ -2,23 +2,29 @@
 <html lang="en">
     <head>
         <meta charset="utf-8">
-        <title>Multiplayer Pong</title>
+        <title>Mario Pong</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/p5.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/addons/p5.dom.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.8.0/addons/p5.sound.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+        <link rel="shortcut icon" type="image/png" href="/favicon.png" />
         <link rel="stylesheet" type="text/css" href="style.css">
     </head>
 
     <body>
         <script src="sketch.js"></script>
 
-        <button id="joinB" style="display: none; z-index: 1; width: 20%; height: 10%; padding: 0px;">Join</button>
+        <button id="joinB">Join</button>
         <div id="creditsDiv">
-            <p class="credits">Game Idea and Art by<a class="credits" href="https://www.youtube.com/channel/UCNK813T2BNBwcfDPDTPeMPA/">Level Up</a></p>
-            <p class="credits">Check out their Youtube video<a class="credits" href="https://www.youtube.com/watch?v=c7L4cDRqnAk">"If Pong had Super Mario Physics"</a></p>
-            <p class="credits">Programming done by Leo Gagnon, Code can be found on<a class="credits" href="https://github.com/Goel25/MarioPong">Github</a></p>
-            <p class="credits">Tools Used: Piskel, BFXR, VSCode</p>
+            <p class="credits">Game Idea and Art by <a class="credits" href="https://www.youtube.com/channel/UCNK813T2BNBwcfDPDTPeMPA/">Level Up</a></p>
+            <p class="credits">Inspired by <a class="credits" href="https://www.youtube.com/watch?v=c7L4cDRqnAk">"If Pong had Super Mario Physics"</a></p>
+            <p class="credits"><a class="credits" href="https://github.com/Goel25/MarioPong">Programming</a> by Leo Gagnon</p>
             <p class="credits">Font "Press Start K" by codeman38</p>
+            <p class="credits">Tools Used: Piskel, BFXR, VSCode</p>
+            <p class="credits">Not affiliated with Nintendo</p>
+            <p class="credits" style="position: absolute; right:10px; bottom: 28px; font-size: 9pt;">First player to 5 wins!</p>
+            <p class="credits" style="position: absolute; right:10px; bottom: 14px;font-size: 9pt;">Use the Arrow keys to move up and down</p>
+            <p class="credits" style="position: absolute; right:10px; bottom: 0px;font-size: 9pt;">Press Space to shoot fireballs</p>
         </div>
     </body>
 </html>
