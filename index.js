@@ -177,7 +177,6 @@ class Ball {
             }
             if (this.vel.x < .3 && this.vel.x > -.3) { //Make sure the ball never goes too vertical
                 if (this.vel.x == 0) {
-                    console.log("THE BALLS VEL.X IS ZERO!!!!!");
                     if (this.pos.x > WIDTH / 2) this.vel.x += .03;
                     else this.vel.x -= .03
                 } else if (this.vel.x >= 0) {
@@ -470,7 +469,6 @@ class Shell {
             this.vel.set(ball.vel.x, ball.vel.y);
             this.hasBounced = true;
             bouncedOffAnything = true;
-            console.log("Shell is bouncing now!!");
         }
 
         if (p1.powerup != "dead" && this.hitPaddle(p1)) hitPlayer = 0;
