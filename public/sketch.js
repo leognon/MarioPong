@@ -182,10 +182,6 @@ new p5(() => {
             background(0);
             textSize(50 * scaleFactor);
             text("MARIO\nPONG", width / 2 + 3, height * .15);
-            textSize(10 * scaleFactor);
-            let txt = " players\nonline!";
-            if (online == 1) txt = " player\nonline";
-            text(online + txt, width - (60 * scaleFactor), 30);
         } else if (status == "waiting") {
             background(0);
             textSize(30 * scaleFactor);
@@ -211,11 +207,10 @@ new p5(() => {
             image(sprites['playerAFire'], 54, 56, 24, 50);
             image(sprites['playerB'], 561, 69, 34.3, 50);
             pop();
-            noFill();
-            stroke(255);
-            const weight = 2;
-            strokeWeight(weight);
-            rect(weight / 2, weight / 2, width - weight, height - weight); //Border
+            textSize(10 * scaleFactor);
+            let txt = " players\nonline!";
+            if (online == 1) txt = " player\nonline";
+            text(online + txt, width - (60 * scaleFactor), 30);
         }
     }
 
