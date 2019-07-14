@@ -894,11 +894,11 @@ class Game {
             }
             if (this.lava) {
                 const hit = this.lava.update(this.players[0], this.players[1], this.ball);
-                if (hit[0]) {
+                if (hit[0] && this.players[0].powerup != "Copter") {
                     this.players[0].hit();
                     sounds.push("die");
                 }
-                if (hit[1]) {
+                if (hit[1] && this.players[1].powerup != "Copter") {
                     this.players[1].hit();
                     sounds.push("die");
                 }
@@ -907,13 +907,11 @@ class Game {
                     this.ball.startRespawning();
                     this.lastPlayerHit = -1; //Since the ball is resetting
                     setTimeout(() => {
-                        if (this.lava.pos.y < this.ballStartY + 25)
-                            this.ballStartY /= 2;
+                        if (this.lava.pos.y < this.ballStartY + 25) this.ballStartY /= 2;
                         this.ball.reset(this.ballStartY, this.lava.pos.y);
                     }, 500);
                 }
-                if (this.players[0].powerup == "dead" && this.players[1].powerup == "dead" &&
-                    this.lava.pos.y < 0) { //If the lava rises, but no one scores, start next round
+                if (this.players[0].powerup == "dead" && this.players[1].powerup == "dead" && this.lava.pos.y < 50) { //If the lava rises, but no one scores, start next round
                     const winner = this.winner();
                     if (winner == -1) { //Someone scored but game isn't over
                         this.countingDown = true; //Stop games from updating
