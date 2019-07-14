@@ -12,6 +12,7 @@ new p5(() => {
     let origHeight = 360;
     let scaleFactor = 1;
     let marioOrYoshi;
+    let online;
 
 
     const spriteNames = [
@@ -111,6 +112,9 @@ new p5(() => {
                         showDisconnectMsg = false; //Show the msg for 3 seconds
                     }, 3000);
                 });
+                socket.on('online', amt => {
+                    online = amt;
+                });
             }
         }
         masterVolume(.3);
@@ -178,6 +182,10 @@ new p5(() => {
             background(0);
             textSize(50 * scaleFactor);
             text("MARIO\nPONG", width / 2 + 3, height * .15);
+            textSize(10 * scaleFactor);
+            let txt = " players\nonline!";
+            if (online == 1) txt = " player\nonline";
+            text(online + txt, width - (60 * scaleFactor), 30);
         } else if (status == "waiting") {
             background(0);
             textSize(30 * scaleFactor);
@@ -362,11 +370,9 @@ new p5(() => {
     }
 
     window.onblur = () => {
-        try {
+        if (player) {
             player.down = false;
             player.up = false;
-        } catch {
-            console.log("Socket not defined yet!");
         }
     }
 

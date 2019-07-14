@@ -32,16 +32,17 @@ button {
 
 button:hover {
     font-size: 170%;
-    /* font-size: 22pt; */
 }
 
 button:active {
     font-size: 175%;
-    /* font-size: 23pt; */
 }
+
+
 
 #creditsDiv {
     display: none;
+    width: 100%;
     z-index: 1;
     padding: 0px;
     position: absolute;
@@ -54,4 +55,8 @@ button:active {
     font-size: 7pt;
     margin: 8px;
     color: white;
+}
+
+a {
+    margin: 0px !important;
 }

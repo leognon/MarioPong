@@ -15,7 +15,7 @@ let deltaTime = 0;
 const WIDTH = 640;
 const HEIGHT = 360;
 
-
+let online = 0;
 let rooms = [];
 let clientsQueue = [];
 
@@ -269,7 +269,6 @@ class Ball {
     }
 
     serialize() {
-        //TODO Make a burning animation for the ball, and if it's respawning, show that
         return {
             'name': 'ball',
             'x': this.pos.x,
@@ -730,11 +729,6 @@ class Player {
     }
 }
 
-/*
-TODO Add copyright for Nintendo
-TODO ONLINE PLAYER COUNT
-TODO ADD INSTRUCTIONS AND CONTROLS
-*/
 class Game {
     constructor() {
         this.players = [new Player('A'), new Player('B')];
@@ -1125,7 +1119,7 @@ function addToQueue(socket) {
             socket.emit('status', 'waiting');
 
             let ids = [];
-            for (let s of clientsQueue) ids.push(s.id);
+            for (let s of clientsQueue) ids.push(s.id.substring(0, 5));
 
             console.log(`Queue: ${ids}`);
         }
@@ -1134,7 +1128,7 @@ function addToQueue(socket) {
             rooms.push(room);
 
             let ids = [];
-            for (let s of clientsQueue) ids.push(s.id);
+            for (let s of clientsQueue) ids.push(s.id.substring(0, 5));
 
             console.log(`Queue Cleared: ${ids}`);
             clientsQueue.splice(0, 2);
@@ -1155,8 +1149,14 @@ function removeFromQueue(socket) {
     clientsQueue.splice(clientsQueue.indexOf(socket));
 }
 
+function sendPlayerCount(amt) {
+    online += amt;
+    io.sockets.emit('online', online);
+}
+
 io.sockets.on('connection', socket => {
     console.log(`We have a new client: ${socket.id.substring(0,5)}`);
+    sendPlayerCount(1);
 
     socket.on('addToQueue', () => {
         addToQueue(socket);
@@ -1194,6 +1194,7 @@ io.sockets.on('connection', socket => {
         } else {
             console.log(`Client ${socket.id.substring(0,5)} disconnected from the menu`);
         }
+        sendPlayerCount(-1);
     });
 });
 
