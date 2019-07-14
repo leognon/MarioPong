@@ -209,7 +209,7 @@ new p5(() => {
             pop();
             textSize(10 * scaleFactor);
             let txt = " players\nonline!";
-            if (online == 1) txt = " player\nonline";
+            if (online == 1) txt = " player\nonline!";
             text(online + txt, width - (60 * scaleFactor), 30);
         }
     }

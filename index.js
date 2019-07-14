@@ -177,7 +177,6 @@ class Ball {
             }
             if (this.vel.x < .3 && this.vel.x > -.3) { //Make sure the ball never goes too vertical
                 if (this.vel.x == 0) {
-                    console.log("THE BALLS VEL.X IS ZERO!!!!!");
                     if (this.pos.x > WIDTH / 2) this.vel.x += .03;
                     else this.vel.x -= .03
                 } else if (this.vel.x >= 0) {
@@ -470,7 +469,6 @@ class Shell {
             this.vel.set(ball.vel.x, ball.vel.y);
             this.hasBounced = true;
             bouncedOffAnything = true;
-            console.log("Shell is bouncing now!!");
         }
 
         if (p1.powerup != "dead" && this.hitPaddle(p1)) hitPlayer = 0;
@@ -541,9 +539,10 @@ class Lava {
             this.pos.x = WIDTH; //Make it wrap aorund
         }
         this.pos.y = Math.max(-15, this.pos.y); //Max height
-
-        if (p1.powerup != "dead" && p1.pos.y + p1.height > this.pos.y) hit[0] = true;
-        if (p2.powerup != "dead" && p2.pos.y + p2.height > this.pos.y) hit[1] = true;
+        if (this.pos.y < HEIGHT - 15) { //Lava is only deadly after a certain point
+            if (p1.powerup != "dead" && p1.pos.y + p1.height > this.pos.y) hit[0] = true;
+            if (p2.powerup != "dead" && p2.pos.y + p2.height > this.pos.y) hit[1] = true;
+        }
         if (ball.pos.y + ball.height > this.pos.y) hit[2] = true;
 
         return hit;
