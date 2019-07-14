@@ -541,9 +541,10 @@ class Lava {
             this.pos.x = WIDTH; //Make it wrap aorund
         }
         this.pos.y = Math.max(-15, this.pos.y); //Max height
-
-        if (p1.powerup != "dead" && p1.pos.y + p1.height > this.pos.y) hit[0] = true;
-        if (p2.powerup != "dead" && p2.pos.y + p2.height > this.pos.y) hit[1] = true;
+        if (this.pos.y < HEIGHT - 15) { //Lava is only deadly after a certain point
+            if (p1.powerup != "dead" && p1.pos.y + p1.height > this.pos.y) hit[0] = true;
+            if (p2.powerup != "dead" && p2.pos.y + p2.height > this.pos.y) hit[1] = true;
+        }
         if (ball.pos.y + ball.height > this.pos.y) hit[2] = true;
 
         return hit;
