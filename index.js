@@ -1059,12 +1059,13 @@ class Room {
         this.clientBSocket = b;
         this.game = new Game();
         this.joinRoom();
-        console.log("Joined room");
+        console.log(`${a.id.substring(0,5)} and ${b.id.substring(0,5)} joined a room`);
     }
 
     update() {
         const gameData = this.game.update();
         if (this.game.gameHasEnded) {
+            console.log(`${this.clientASocket.id.substring(0,5)} and ${this.clientBSocket.id.substring(0,5)} finished their game`);
             this.leaveRoom();
         }
         io.sockets.to(this.roomId).emit('gameData', gameData);
@@ -1126,8 +1127,6 @@ function addToQueue(socket) {
 
             let ids = [];
             for (let s of clientsQueue) ids.push(s.id.substring(0, 5));
-
-            console.log(`Queue Cleared: ${ids}`);
             clientsQueue.splice(0, 2);
         }
     }
@@ -1152,7 +1151,7 @@ function sendPlayerCount(amt) {
 }
 
 io.sockets.on('connection', socket => {
-    console.log(`We have a new client: ${socket.id.substring(0,5)}`);
+    console.log(`New Client ${socket.id.substring(0,5)}`);
     sendPlayerCount(1);
 
     socket.on('addToQueue', () => {
@@ -1184,12 +1183,12 @@ io.sockets.on('connection', socket => {
         const room = roomOf(socket);
         if (clientsQueue.indexOf(socket) >= 0) {
             removeFromQueue(socket); //If they disconnect in queue, remove them from queue
-            console.log(`Client ${socket.id.substring(0,5)} disconnected from queue`);
+            console.log(`${socket.id.substring(0,5)} disconnected from queue`);
         } else if (room != false) { //If they are in game
             room.clientDisconnected(socket.id); //end that game and kick out the other client
-            console.log(`Client ${socket.id.substring(0,5)} disconnected from a game`);
+            console.log(`${socket.id.substring(0,5)} disconnected from a game`);
         } else {
-            console.log(`Client ${socket.id.substring(0,5)} disconnected from the menu`);
+            console.log(`${socket.id.substring(0,5)} disconnected from the menu`);
         }
         sendPlayerCount(-1);
     });

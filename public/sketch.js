@@ -208,9 +208,11 @@ new p5(() => {
             image(sprites['playerB'], 561, 69, 34.3, 50);
             pop();
             textSize(10 * scaleFactor);
-            let txt = " players\nonline!";
-            if (online == 1) txt = " player\nonline!";
-            text(online + txt, width - (60 * scaleFactor), 30);
+            if (online != undefined) {
+                let txt = " players\nonline!";
+                if (online == 1) txt = " player\nonline!";
+                text(online + txt, width - (60 * scaleFactor), 30);
+            }
         }
     }
 
