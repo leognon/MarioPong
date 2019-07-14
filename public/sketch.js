@@ -537,7 +537,7 @@ new p5(() => {
 
             }
             if (this.powerup == "Copter") {
-                this.pos.y = lerp(this.pos.y, -75, .05);
+                this.pos.y = lerp(this.pos.y, -75, .0035 * deltaTime);
             }
             if (this.pos.x != this.prevPos.x || this.pos.y != this.prevPos.y) { //If the player has moved, send position to server
                 const data = {
