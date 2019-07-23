@@ -1,4 +1,4 @@
-//Credit to Daniel Shiffman at https://github.com/CodingTrain/website/tree/master/Node/sockets for some of this code
+//Credit to Daniel Shiffman at https://github.com/CodingTrain/website/tree/master/Node/sockets for some of the node.js code
 //This project was started June 10, 2019
 const express = require('express');
 const app = express();
@@ -618,8 +618,9 @@ class Powerup {
 }
 
 class Player {
-    constructor(aOrB) {
+    constructor(aOrB, name) {
         this.aOrB = aOrB;
+        this.playerName = name
         this.score = 0;
         this.baseWidth = 20;
         this.baseHeight = 50;
@@ -710,6 +711,13 @@ class Player {
         this.powerup = "dead";
     }
 
+    serializeScore() {
+        return {
+            'score': this.score,
+            'name': this.playerName
+        }
+    }
+
     serialize() {
         this.modX = this.pos.x;
         if (this.aOrB == 'A') this.modX += (this.displayWidth / 6);
@@ -729,8 +737,8 @@ class Player {
 }
 
 class Game {
-    constructor() {
-        this.players = [new Player('A'), new Player('B')];
+    constructor(aName, bName) {
+        this.players = [new Player('A', aName), new Player('B', bName)];
         this.ball = new Ball(8, 8);
         this.fireballs = [];
         this.shells = [];
@@ -749,7 +757,7 @@ class Game {
         this.countdownText = new Text("3", WIDTH / 2, HEIGHT * .25, 70);
         this.countdownInterval;
 
-        this.winnerText = new Text("WINS!", WIDTH / 2, HEIGHT * .25, 40);
+        this.winnerText = new Text("WINS!", WIDTH / 2, HEIGHT * .25, 28);
         this.showingWinner = false;
         this.gameHasEnded = false;
 
@@ -978,7 +986,7 @@ class Game {
                 this.players[0].serialize(), //Make sure the players stay in this order!
                 this.players[1].serialize()
             ],
-            "score": [this.players[0].score, this.players[1].score],
+            "score": [this.players[0].serializeScore(), this.players[1].serializeScore()],
             "powerups": this.powerups.map(p => p.serialize()),
             "movingSprites": movingSprites,
             "sounds": sounds,
@@ -1057,7 +1065,7 @@ class Room {
         this.roomId = a.id + b.id; //This makes sure every roomId is unique, because ids always are
         this.clientASocket = a;
         this.clientBSocket = b;
-        this.game = new Game();
+        this.game = new Game(a.playerName, b.playerName);
         this.joinRoom();
         console.log(`${a.id.substring(0,5)} and ${b.id.substring(0,5)} joined a room`);
     }
@@ -1154,7 +1162,10 @@ io.sockets.on('connection', socket => {
     console.log(`New Client ${socket.id.substring(0,5)}`);
     sendPlayerCount(1);
 
-    socket.on('addToQueue', () => {
+    socket.on('addToQueue', name => {
+        if (name.length < 1) name = "Player"; //Make sure name is right size
+        if (name.length > 14) name = name.substring(0, 14);
+        socket.playerName = name;
         addToQueue(socket);
     });
 

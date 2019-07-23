@@ -4,7 +4,9 @@ new p5(() => {
 
     let sprites;
     let sounds;
+    let joinDiv;
     let joinButton;
+    let playerNameInp;
     let creditsDiv;
     let widthToHeight;
     let cnv;
@@ -65,19 +67,19 @@ new p5(() => {
             if (amtLoaded >= totalToLoad) { //Once assets have loaded, connect to the server
                 lavaColor = color(255, 56, 4);
                 status = "menu";
-                joinButton.show();
+                joinDiv.show()
                 creditsDiv.show();
                 socket = io();
                 socket.on('status', s => {
                     status = s;
                     if (status == "waiting") {
-                        joinButton.hide();
+                        joinDiv.hide();
                         creditsDiv.hide();
                     }
                     if (status == "menu") {
                         movingSprites = [];
                         gameData = null;
-                        joinButton.style("display", "inline");
+                        joinDiv.style("display", "inline");
                         creditsDiv.style("display", "inline");
                         sizeDOMCorrectly(); //Incase window resized in-game
                     }
@@ -128,15 +130,28 @@ new p5(() => {
         });
 
         cnv = createCanvas(origWidth, origHeight);
+        joinDiv = select('#joinDiv');
         joinButton = select('#joinB');
+
+        let defaultName = "Player";
+        for (let i = 0; i < 4; i++) defaultName += floor(random(10));
+        playerNameInp = select('#playerName').value(defaultName);
+        playerNameInp.changed(() => {
+            if (playerNameInp.value().length < 1) playerNameInp.value(defaultName);
+        });
+        playerNameInp.mouseClicked(() => {
+            if (playerNameInp.value() == defaultName)
+                document.getElementById('playerName').select();
+        });
+
         creditsDiv = select('#creditsDiv');
         joinButton.mouseClicked(() => {
-            socket.emit('addToQueue', true);
+            socket.emit('addToQueue', playerNameInp.value()); //Join the queue with the player name
         });
         widthToHeight = width / height;
-        joinButton.show(); //Show the button so it can get the correct height
+        joinDiv.show(); //Show the button so it can get the correct height
         sizeDOMCorrectly(); //Size the dom
-        joinButton.hide(); //Hide the join button until everything has loaded
+        joinDiv.hide(); //Hide the join button until everything has loaded
     }
 
     draw = () => {
@@ -303,11 +318,12 @@ new p5(() => {
             }
 
             noStroke();
-            textAlign(CENTER, CENTER);
             fill(255);
-            textSize(20);
-            text(gameData.score[0], origWidth * .45, 25); //Shows scores
-            text(gameData.score[1], origWidth * .55, 25);
+            textSize(15);
+            textAlign(RIGHT);
+            text(`${gameData.score[0].name} ${gameData.score[0].score}`, origWidth * .48, 18);
+            textAlign(LEFT);
+            text(`${gameData.score[1].name} ${gameData.score[1].score}`, origWidth * .52, 18);
         } else {
             console.log("No game data yet!");
         }
@@ -315,6 +331,7 @@ new p5(() => {
         if (player) player.show();
 
         if (gameData) {
+            textAlign(CENTER, CENTER);
             noStroke();
             fill(255);
             for (txt of gameData.text) { //Shows countdown, and winner
@@ -323,11 +340,11 @@ new p5(() => {
                 if (txt.text == "START") txt.text = `START`;
                 if (txt.text[0] = "W") { //If the text is saying the winner
                     if (txt.text[1] == "M") { //If mario won
-                        if (marioOrYoshi == "Mario") txt.text = "Congratulations!\nMario Wins!";
-                        else txt.text = "Game Over\nMario Wins";
+                        if (marioOrYoshi == "Mario") txt.text = `Congratulations!\n${gameData.score[0].name} Wins!`;
+                        else txt.text = `Game Over\n${gameData.score[0].name} Wins`;
                     } else if (txt.text[1] == "Y") { //If yoshi won
-                        if (marioOrYoshi == "Mario") txt.text = "Game Over\nYoshi Wins";
-                        else txt.text = "Congratulations!\nYoshi Wins!";
+                        if (marioOrYoshi == "Mario") txt.text = `Game Over\n${gameData.score[1].name} Wins`;
+                        else txt.text = `Congratulations!\n${gameData.score[1].name} Wins!`;
                     }
                 }
                 text(txt.text, txt.x, txt.y);
@@ -359,8 +376,6 @@ new p5(() => {
 
         resizeCanvas(newWidth, newHeight);
         cnv.position(windowWidth / 2 - width / 2, windowHeight / 2 - height / 2);
-        joinButton.position((windowWidth / 2) - (joinButton.elt.clientWidth / 2),
-            (windowHeight / 2) - (joinButton.elt.clientHeight / 2));
 
         scaleFactor = newWidth / origWidth;
         render();
