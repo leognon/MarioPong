@@ -1,18 +1,22 @@
 new p5(() => {
     let socket;
     let status = "loading";
+    let initialConnect = false;
 
     let sprites;
     let sounds;
+
     let joinDiv;
     let joinButton;
     let playerNameInp;
     let creditsDiv;
+
     let widthToHeight;
     let cnv;
     let origWidth = 640;
     let origHeight = 360;
     let scaleFactor = 1;
+
     let marioOrYoshi;
     let online;
 
@@ -55,8 +59,8 @@ new p5(() => {
     let justReceivedData = false;
     let gameData = null;
 
-    const disconnectMsg = "Your opponent\nhas disconnected.";
-    let showDisconnectMsg = false;
+    let message;
+    let showMessage = false;
 
     let deltaTime = 0;
     let lastFrameTime = Date.now();
@@ -69,6 +73,7 @@ new p5(() => {
                 status = "menu";
                 joinDiv.show()
                 creditsDiv.show();
+
                 socket = io();
                 socket.on('status', s => {
                     status = s;
@@ -109,9 +114,10 @@ new p5(() => {
                     status = "joined";
                 });
                 socket.on('gotDisconnected', () => {
-                    showDisconnectMsg = true;
+                    message = "Your opponent\nhas disconnected.";
+                    showMessage = true;
                     setTimeout(() => {
-                        showDisconnectMsg = false; //Show the msg for 3 seconds
+                        showMessage = false; //Show the msg for 3 seconds
                     }, 3000);
                 });
                 socket.on('online', amt => {
@@ -155,25 +161,41 @@ new p5(() => {
     }
 
     draw = () => {
-        const now = Date.now();
-        deltaTime = now - lastFrameTime;
-        lastFrameTime = now;
-
-        if (status == "joined") {
-            player.update();
-            renderGame();
-        } else {
-            render();
-        }
-        if (showDisconnectMsg) {
+        if (!initialConnect && socket && socket.connected) initialConnect = true;
+        if (initialConnect && socket.disconnected) { //If Disconnected, show it and freeze the game
+            refreshMsg = "You have been disconnected from the server!\nPlease refresh the page!";
+            alert("You have been disconnected from the server! Please refresh the page!");
+            noLoop(); //Make sure game is stopped
+            location.reload(true); //Force reload the page and the cache
             noStroke();
-            textSize(25 * scaleFactor);
+            textSize(15 * scaleFactor);
             textAlign(CENTER);
-            const w = textWidth(disconnectMsg) * .6;
+            const w = textWidth(refreshMsg) * .6;
             fill(0);
             rect(width / 2 - (w / 2), (height * .15) - (25 * scaleFactor), w, 65 * scaleFactor);
             fill(255, 0, 0);
-            text(disconnectMsg, width / 2, height * .15);
+            text(refreshMsg, width / 2, height * .15);
+        } else {
+            const now = Date.now();
+            deltaTime = now - lastFrameTime;
+            lastFrameTime = now;
+
+            if (status == "joined") {
+                player.update();
+                renderGame();
+            } else {
+                render();
+            }
+            if (showMessage) {
+                noStroke();
+                textSize(25 * scaleFactor);
+                textAlign(CENTER);
+                const w = textWidth(message) * .6;
+                fill(0);
+                rect(width / 2 - (w / 2), (height * .15) - (25 * scaleFactor), w, 65 * scaleFactor);
+                fill(255, 0, 0);
+                text(message, width / 2, height * .15);
+            }
         }
     }
 
