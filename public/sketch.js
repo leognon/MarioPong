@@ -74,7 +74,9 @@ new p5(() => {
                 joinDiv.show()
                 creditsDiv.show();
 
-                socket = io();
+                socket = io({
+                    'reconnection': false
+                }); //Connect the client, and don't reconnect if disconnected
                 socket.on('status', s => {
                     status = s;
                     if (status == "waiting") {
@@ -259,10 +261,9 @@ new p5(() => {
         push();
         scale(scaleFactor);
         fill(255);
+        const divider = sprites['divider'];
+        image(divider, origWidth / 2 - divider.width / 2, 0, 2, origHeight); //Dotted line in center
         if (gameData) {
-            const divider = sprites['divider'];
-            image(divider, origWidth / 2 - divider.width / 2, 0, 2, origHeight); //Dotted line in center
-
             for (item of gameData.sprites) { //Shows players
                 if (item.name != player.nameWithPowerup && item.powerup != "dead") {
                     if (item.powerup == "Star") {
@@ -284,7 +285,10 @@ new p5(() => {
                     }
                 }
             }
+        }
+        if (player) player.show();
 
+        if (gameData) {
             const margin = 10;
             for (powerup of gameData.powerups) { //Shows powerups
                 const diameter = max(powerup.width, powerup.height);
@@ -350,7 +354,6 @@ new p5(() => {
             console.log("No game data yet!");
         }
 
-        if (player) player.show();
 
         if (gameData) {
             textAlign(CENTER, CENTER);
