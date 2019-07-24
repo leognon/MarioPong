@@ -968,7 +968,7 @@ class Game {
         }
         const whoScored = this.ball.checkScore();
 
-        if (whoScored[0] == true && !this.countingDown && !this.showingWinner) { //Check if someone has scored
+        if (whoScored[0] == true && !this.countingDown && !this.showingWinner && !this.gameHasEnded) { //Check if someone has scored
             this.score(whoScored);
         }
 
@@ -1067,13 +1067,13 @@ class Room {
         this.clientBSocket = b;
         this.game = new Game(a.playerName, b.playerName);
         this.joinRoom();
-        console.log(`${a.id.substring(0,5)} and ${b.id.substring(0,5)} joined a room`);
+        console.log(`${getName(a)} and ${getName(b)} joined a room`);
     }
 
     update() {
         const gameData = this.game.update();
         if (this.game.gameHasEnded) {
-            console.log(`${this.clientASocket.id.substring(0,5)} and ${this.clientBSocket.id.substring(0,5)} finished their game`);
+            console.log(`${getName(this.clientASocket)} and ${getName(this.clientBSocket)} finished a game! Score: ${this.game.players[0].score} - ${this.game.players[1].score}`);
             this.leaveRoom();
         }
         io.sockets.to(this.roomId).emit('gameData', gameData);
@@ -1117,6 +1117,10 @@ class Room {
     }
 }
 
+function getName(socket) {
+    if (socket.playerName) return `${socket.playerName} (${socket.id.substring(0,5)})`;
+    else return `${socket.id.substring(0,5)}`;
+}
 
 function addToQueue(socket) {
     if (clientsQueue.indexOf(socket) == -1) {
@@ -1125,7 +1129,7 @@ function addToQueue(socket) {
             socket.emit('status', 'waiting');
 
             let ids = [];
-            for (let s of clientsQueue) ids.push(s.id.substring(0, 5));
+            for (let s of clientsQueue) ids.push(getName(s));
 
             console.log(`Queue: ${ids}`);
         }
@@ -1134,7 +1138,7 @@ function addToQueue(socket) {
             rooms.push(room);
 
             let ids = [];
-            for (let s of clientsQueue) ids.push(s.id.substring(0, 5));
+            for (let s of clientsQueue) ids.push(getName(s));
             clientsQueue.splice(0, 2);
         }
     }
@@ -1159,7 +1163,7 @@ function sendPlayerCount(amt) {
 }
 
 io.sockets.on('connection', socket => {
-    console.log(`New Client ${socket.id.substring(0,5)}`);
+    console.log(`New Client ${getName(socket)}`);
     sendPlayerCount(1);
 
     socket.on('addToQueue', name => {
@@ -1194,12 +1198,12 @@ io.sockets.on('connection', socket => {
         const room = roomOf(socket);
         if (clientsQueue.indexOf(socket) >= 0) {
             removeFromQueue(socket); //If they disconnect in queue, remove them from queue
-            console.log(`${socket.id.substring(0,5)} disconnected from queue`);
+            console.log(`${getName(socket)} disconnected from queue`);
         } else if (room != false) { //If they are in game
             room.clientDisconnected(socket.id); //end that game and kick out the other client
-            console.log(`${socket.id.substring(0,5)} disconnected from a game`);
+            console.log(`${getName(socket)} disconnected from a game`);
         } else {
-            console.log(`${socket.id.substring(0,5)} disconnected from the menu`);
+            console.log(`${getName(socket)} disconnected from the menu`);
         }
         sendPlayerCount(-1);
     });
