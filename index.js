@@ -1044,7 +1044,8 @@ class Game {
             pos.y += this.players[pIndex].height / 2;
             const fireball = new Fireball(pos, dir);
             this.fireballs.push(fireball);
-            this.players[pIndex].shoot(); //Lets the player know they shot, for sound effects
+            if (!this.countingDown && !this.showingWinner && !this.gameHasEnded)
+                this.players[pIndex].shoot(); //Lets the player know they shot, for sound effects, only ingame though
         }
     }
 
