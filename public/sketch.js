@@ -141,15 +141,19 @@ new p5(() => {
         joinDiv = select('#joinDiv');
         joinButton = select('#joinB');
 
-        let defaultName = "Player";
-        for (let i = 0; i < 4; i++) defaultName += floor(random(10));
-        playerNameInp = select('#playerName').value(defaultName);
+        let pName = "Player";
+        for (let i = 0; i < 4; i++) pName += floor(random(10));
+
+        if (localStorage.getItem("MarioPongUsername") != null) pName = localStorage.getItem("MarioPongUsername");
+
+        playerNameInp = select('#playerName').value(pName);
         playerNameInp.changed(() => {
-            if (playerNameInp.value().length < 1) playerNameInp.value(defaultName);
+            if (playerNameInp.value().length < 1) playerNameInp.value(pName);
+            localStorage.setItem("MarioPongUsername", playerNameInp.value());
         });
+
         playerNameInp.mouseClicked(() => {
-            if (playerNameInp.value() == defaultName)
-                document.getElementById('playerName').select();
+            document.getElementById('playerName').select();
         });
 
         creditsDiv = select('#creditsDiv');
