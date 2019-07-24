@@ -343,9 +343,9 @@ new p5(() => {
             fill(255);
             textSize(15);
             textAlign(RIGHT);
-            text(`${gameData.score[0].name} ${gameData.score[0].score}`, origWidth * .48, 18);
+            text(`${gameData.score[0].name} ${gameData.score[0].score}`, origWidth * .48, 20);
             textAlign(LEFT);
-            text(`${gameData.score[1].name} ${gameData.score[1].score}`, origWidth * .52, 18);
+            text(`${gameData.score[1].score} ${gameData.score[1].name}`, origWidth * .52, 20);
         } else {
             console.log("No game data yet!");
         }
