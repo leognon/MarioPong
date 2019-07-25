@@ -126,7 +126,7 @@ class Ball {
         this.respawning = true;
     }
 
-    reset(startY = (HEIGHT / 2), maxY = false) {
+    reset(goTowards, startY = (HEIGHT / 2), maxY = false) {
         this.respawning = false;
         this.speed = this.baseSpeed;
         this.pos = new Vector((WIDTH / 2) - (this.width / 2), startY - (this.height / 2));
@@ -145,7 +145,9 @@ class Ball {
         }
 
         this.vel = new Vector(Math.cos(ang) * this.speed, Math.sin(ang) * this.speed);
-        if (Math.random() < .5) this.vel.x *= -1;
+        if (goTowards == 1)
+            this.vel.x *= -1; //Make it go towards Mario if it should
+
         this.prevPos = this.pos.copy();
         this.prevVel = new Vector();
     }
@@ -746,6 +748,7 @@ class Game {
         this.lava = undefined;
         this.ballStartY = HEIGHT / 2;
 
+        this.lastPlayerScored = Math.floor(Math.random() * 2); //Makes ball go towards random player at start
         this.lastPlayerHit = -1;
         this.powerups = [];
 
@@ -802,7 +805,7 @@ class Game {
             case 4:
                 this.lava = new Lava();
                 this.powerups = [new Powerup("Copter", "center")];
-                this.ball.reset(HEIGHT / 2, this.lava.pos.y);
+                this.ball.reset(this.lastPlayerScored, HEIGHT / 2, this.lava.pos.y);
                 break;
         }
     }
@@ -826,9 +829,9 @@ class Game {
                     this.saws.map(s => s.startMoving());
                     if (this.lava) {
                         this.lava.startMoving();
-                        this.ball.reset(HEIGHT / 2, this.lava.pos.y);
+                        this.ball.reset(this.lastPlayerScored, HEIGHT / 2, this.lava.pos.y);
                     } else {
-                        this.ball.reset(); //If its the first round, just reset some the ball
+                        this.ball.reset(this.lastPlayerScored); //If its the first round, just reset some the ball
                     }
                 }
             }
@@ -846,7 +849,7 @@ class Game {
 
         this.players[0].reset();
         this.players[1].reset();
-        this.ball.reset();
+        this.ball.reset(this.lastPlayerScored);
     }
 
     update() {
@@ -910,13 +913,13 @@ class Game {
                     this.players[1].hit();
                     sounds.push("die");
                 }
-                if (hit[2] && !this.ball.respawning) {
+                if (hit[2] && !this.ball.respawning) { //If it hit the ball
                     sounds.push("die");
                     this.ball.startRespawning();
-                    this.lastPlayerHit = -1; //Since the ball is resetting
                     setTimeout(() => {
                         if (this.lava.pos.y < this.ballStartY + 25) this.ballStartY /= 2;
-                        this.ball.reset(this.ballStartY, this.lava.pos.y);
+                        this.ball.reset(this.lastPlayerHit, this.ballStartY, this.lava.pos.y);
+                        this.lastPlayerHit = -1; //Since the ball is resetting
                     }, 500);
                 }
                 if (this.players[0].powerup == "dead" && this.players[1].powerup == "dead" && this.lava.pos.y < 50) { //If the lava rises, but no one scores, start next round
@@ -937,7 +940,6 @@ class Game {
                     }
                 }
             }
-
             if (this.lastPlayerHit > -1) {
                 for (let powerup of this.powerups) {
                     if (!powerup.collected && this.ball.hitPowerup(powerup)) { //Test if a player just got a powerup
@@ -947,10 +949,10 @@ class Game {
                         if (powerup.name == "Copter") {
                             this.ball.startRespawning(); //Stop the ball so no one scores
                             this.lava.riseFast();
-                            setTimeout(() => {
+                            setTimeout(() => { //Check for who scored after the lava rose
                                 const losingSide = (this.lastPlayerHit == 0) ? WIDTH + 100 : -100;
                                 const whoScored = [true, losingSide];
-                                this.score(whoScored);
+                                this.lastPlayerScored = this.score(whoScored);
                             }, 2250);
                         }
                     }
@@ -969,7 +971,7 @@ class Game {
         const whoScored = this.ball.checkScore();
 
         if (whoScored[0] == true && !this.countingDown && !this.showingWinner && !this.gameHasEnded) { //Check if someone has scored
-            this.score(whoScored);
+            this.lastPlayerScored = this.score(whoScored);
         }
 
         let movingSprites = [];
@@ -1017,6 +1019,9 @@ class Game {
                 this.endGame();
             }, 2500);
         }
+
+        if (scored[1] < WIDTH / 2) return 1; //Increase score for whoever just scored
+        else return 0;
     }
 
     endGame() {
