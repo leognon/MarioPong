@@ -660,6 +660,7 @@ class Player {
     }
 
     setPowerup(p) {
+        if (this.powerup != "dead") { //You can't come back to life by getting a powerup
         this.powerup = p.name;
         if (this.powerup == "Big") {
             this.sizeMult = 1.3;
@@ -675,6 +676,7 @@ class Player {
             this.displayWidth = this.baseDisplayWidth * this.sizeMult;
             this.displayHeight = this.baseDisplayHeight * this.sizeMult;
         }
+    }
     }
 
     reset() {
