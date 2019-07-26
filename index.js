@@ -1,3 +1,13 @@
+/*
+TODO Add sound for destroying chainsaw and figure out where I could put more sound effects (countdown? powerup respawn?)
+TODO Figure out ball speeding up after it's sped up once
+
+TODO Fix ball lagging when there is a delay between server send and client recieve
+TODO Make ball not lag after countdown
+
+TODO track player stats through their ip (socket.handshake.address) and use database
+*/
+
 //Credit to Daniel Shiffman at https://github.com/CodingTrain/website/tree/master/Node/sockets for some of the node.js code
 //This project was started June 10, 2019
 const express = require('express');
@@ -367,6 +377,7 @@ class Fireball {
         this.pos = new Vector(pos.x, pos.y - (this.height / 2));
         if (dir == -1) this.pos.x -= this.width;
         this.speed = .25;
+        this.dir = dir;
         this.vel = new Vector(dir * this.speed * .5, this.speed * 0.866); //The fireball at a -60° ang
     }
 
@@ -581,6 +592,14 @@ class Powerup {
     constructor(name, pos) {
         this.name = name;
         this.collected = false;
+
+        this.respawnAt = 0; //When it will respawn
+        this.timeToRespawn = 10 * 1000; //How long it takes to respawn
+        this.timeToStartFlashing = 1 * 1000; //How long it takes before respawning to start flashing
+        this.flashInterval = .1 * 1000; //How quickly it should flash
+        this.lastFlash = 0; //The last time it flashed
+        this.flashing = false; //Is it currently shown or hidden?
+
         if (name == "Fire") {
             this.width = 41.6;
             this.height = 40;
@@ -591,9 +610,11 @@ class Powerup {
             this.width = 41.4;
             this.height = 39.6;
         } else if (name == "Star") {
+            this.timeToRespawn = Infinity; //Star should never respawn
             this.width = 40;
             this.height = 47.5;
         } else if (name == "Copter") {
+            this.timeToRespawn = Infinity; //Copter should never respawn
             this.width = 39.6;
             this.height = 41.8;
         }
@@ -607,10 +628,32 @@ class Powerup {
         }
     }
 
+    update() {
+        if (this.collected) {
+            const now = Date.now();
+            if (now >= this.respawnAt - this.timeToStartFlashing) { //Should it be start flashing?
+                if (now >= this.lastFlash + this.flashInterval) { //Has it been long enough since the last flash?
+                    this.flashing = !this.flashing;
+                    this.lastFlash = now;
+                }
+                if (now >= this.respawnAt) { //Is it ready to respawn yet?
+                    this.collected = false;
+                    this.flashing = false;
+                }
+            }
+        }
+    }
+
+    collect() {
+        this.collected = true;
+        this.respawnAt = Date.now() + this.timeToRespawn;
+    }
+
     serialize() {
+        const shown = (!this.collected || this.flashing);
         return {
             'name': this.name,
-            'collected': this.collected,
+            'shown': shown,
             'x': this.pos.x,
             'y': this.pos.y,
             'width': this.width,
@@ -661,22 +704,21 @@ class Player {
 
     setPowerup(p) {
         if (this.powerup != "dead") { //You can't come back to life by getting a powerup
-        this.powerup = p.name;
-        if (this.powerup == "Big") {
-            this.sizeMult = 1.3;
-
-            this.width = this.baseWidth * this.sizeMult;
-            this.height = this.baseHeight * this.sizeMult;
-            this.displayWidth = this.baseDisplayWidth * this.sizeMult;
-            this.displayHeight = this.baseDisplayHeight * this.sizeMult;
-        } else if (this.powerup == "Small") {
-            this.sizeMult = .8;
-            this.width = this.baseWidth * this.sizeMult;
-            this.height = this.baseHeight * this.sizeMult;
-            this.displayWidth = this.baseDisplayWidth * this.sizeMult;
-            this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+            this.powerup = p.name;
+            if (this.powerup == "Big") {
+                this.sizeMult = 1.3;
+                this.width = this.baseWidth * this.sizeMult;
+                this.height = this.baseHeight * this.sizeMult;
+                this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+                this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+            } else if (this.powerup == "Small") {
+                this.sizeMult = .8;
+                this.width = this.baseWidth * this.sizeMult;
+                this.height = this.baseHeight * this.sizeMult;
+                this.displayWidth = this.baseDisplayWidth * this.sizeMult;
+                this.displayHeight = this.baseDisplayHeight * this.sizeMult;
+            }
         }
-    }
     }
 
     reset() {
@@ -789,11 +831,7 @@ class Game {
                 ];
                 break;
             case 2:
-                this.shells = [];
-                for (let i = 0; i < 5; i++) {
-                    const y = (i * (HEIGHT / 5)) + 30;
-                    this.shells.push(new Shell(WIDTH / 2, y));
-                }
+                this.spawnShells();
                 break;
             case 3:
                 this.powerups = [new Powerup("Star", "center")];
@@ -840,6 +878,14 @@ class Game {
         }, 1000);
     }
 
+    spawnShells() {
+        this.shells = [];
+        for (let i = 0; i < 5; i++) {
+            const y = (i * (HEIGHT / 5)) + 30;
+            this.shells.push(new Shell(WIDTH / 2, y));
+        }
+    }
+
     resetGame() {
         this.lastPlayerHit = -1;
         this.fireballs = [];
@@ -883,13 +929,16 @@ class Game {
                 const shell = this.shells[i];
                 if (shell.shouldDestroy()) { //Remove shells out of the screen
                     this.shells.splice(i, 1);
+                    if (this.shells.length <= 0) setTimeout(() => {
+                        this.spawnShells();
+                    }, 2500);
                 } else {
                     const hit = shell.update(this.players[0], this.players[1], this.ball, canBounce); //Check if shell hit player
                     if (hit[0] > -1) {
                         this.players[hit[0]].hit();
                         sounds.push("hit");
                     } //Remove player who got hit
-                    if (hit[1]) {
+                    if (hit[1]) { //If it bounced, play the sound
                         sounds.push("bounce");
                     }
                 }
@@ -944,9 +993,10 @@ class Game {
             }
             if (this.lastPlayerHit > -1) {
                 for (let powerup of this.powerups) {
+                    powerup.update();
                     if (!powerup.collected && this.ball.hitPowerup(powerup)) { //Test if a player just got a powerup
                         sounds.push("collect");
-                        powerup.collected = true; //Will stop showing the powerup
+                        powerup.collect(); //Will stop showing the powerup
                         this.players[this.lastPlayerHit].setPowerup(powerup); //Gives the powerup to that player
                         if (powerup.name == "Copter") {
                             this.ball.startRespawning(); //Stop the ball so no one scores
@@ -1042,8 +1092,13 @@ class Game {
     }
 
     shoot(pIndex) {
-        if (this.fireballs.length < 3) {
-            const dir = (pIndex == 0) ? 1 : -1;
+        let maxFireballs = 3;
+        let alreadyShotDir = (pIndex == 0) ? 1 : -1;
+        for (let fireball of this.fireballs) {
+            if (fireball.dir == alreadyShotDir) maxFireballs--;
+        }
+        if (maxFireballs > 0) {
+            const dir = alreadyShotDir;
             let pos = this.players[pIndex].pos.copy();
             if (pIndex == 0) {
                 pos.x += this.players[pIndex].width; //Player on the left spawns it in front
