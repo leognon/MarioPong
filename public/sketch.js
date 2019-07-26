@@ -299,7 +299,7 @@ new p5(() => {
                 const centerX = powerup.x + (powerup.width / 2);
                 const centerY = powerup.y + (powerup.height / 2);
                 image(sprites['powerupBorder'], centerX - (diameter / 2) - margin, centerY - (diameter / 2) - margin, diameter + (margin * 2), diameter + (margin * 2)); //Border Image
-                if (!powerup.collected) {
+                if (powerup.shown) {
                     let name;
                     if (powerup.name == "Fire") name = "fireflower";
                     if (powerup.name == "Big") name = "big";
