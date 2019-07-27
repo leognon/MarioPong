@@ -5,6 +5,7 @@ new p5(() => {
 
     let sprites;
     let sounds;
+    let muted = false;
 
     let joinDiv;
     let joinButton;
@@ -99,8 +100,10 @@ new p5(() => {
                             new MovingSprite(movingSprite.name, movingSprite.width, movingSprite.height, movingSprite.x,
                                 movingSprite.y, movingSprite.vx, movingSprite.vy, movingSprite.speed, movingSprite.extra));
                     }
-                    for (let i = 0; i < d.sounds.length; i++) {
-                        sounds[d.sounds[i]].play(); //Play sound effects for that frame
+                    if (!muted) {
+                        for (let i = 0; i < d.sounds.length; i++) {
+                            sounds[d.sounds[i]].play(); //Play sound effects for that frame
+                        }
                     }
                     justReceivedData = true;
                     const index = (player.aOrB == 'A') ? 0 : 1;
@@ -429,6 +432,7 @@ new p5(() => {
                 player.shoot();
             }
         }
+        if (k.keyCode = 77) muted = !muted; //Press M to mute/unmute
     }
 
     window.onkeyup = k => {

@@ -319,7 +319,7 @@ class Saw {
             if (p2.powerup != "Star") playerHit = 1; //If it hit a vulnerable player
             else hitPlayerWithStar = true; //If it hit an invincible player
         }
-        if (hitPlayerWithStar) playerHit = -2;
+        if (hitPlayerWithStar) playerHit = -2; //If it should be destroyed
 
         this.vel.setMag(this.speed * deltaTime);
         this.pos.add(this.vel);
@@ -949,6 +949,7 @@ class Game {
                 const hit = saw.update(this.players[0], this.players[1]); //Returns who got hit
                 if (hit == -2) { //If it hit -2, that means it hit player with star power
                     this.saws.splice(i, 1); //Destory saw
+                    sounds.push("die");
                 } else if (hit > -1) {
                     this.players[hit].hit(); //If saw hit p1
                     sounds.push("die");
