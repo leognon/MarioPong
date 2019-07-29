@@ -14,15 +14,12 @@ body {
 }
 
 button {
-    display: none;
-    z-index: 10;
-    width: 20%;
-    height: 10%;
+    width: 100%;
+    height: 50%;
     padding: 0px;
     background-color: rgb(255, 255, 255);
     font-family: 'Font';
     font-size: 150%;
-    /* font-size: 20pt; */
     color: black;
     border: none;
     -webkit-transition-duration: 0.2s;
@@ -38,7 +35,30 @@ button:active {
     font-size: 175%;
 }
 
+input {
+    width: 98%;
+    height: 50%;
+    margin: 0px;
+    padding-left: 2%;
+    border: none;
+    background-color: rgb(255, 255, 255);
+    font-family: 'Font';
+    font-size: 100%;
+    color: black;
+}
 
+#joinDiv {
+    display: none;
+    z-index: 10;
+    width: 20%;
+    height: 15%;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    bottom: 0px;
+    right: 0px;
+    margin: auto;
+}
 
 #creditsDiv {
     display: none;

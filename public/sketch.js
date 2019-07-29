@@ -1,16 +1,23 @@
 new p5(() => {
     let socket;
     let status = "loading";
+    let initialConnect = false;
 
     let sprites;
     let sounds;
+    let muted = false;
+
+    let joinDiv;
     let joinButton;
+    let playerNameInp;
     let creditsDiv;
+
     let widthToHeight;
     let cnv;
     let origWidth = 640;
     let origHeight = 360;
     let scaleFactor = 1;
+
     let marioOrYoshi;
     let online;
 
@@ -53,8 +60,8 @@ new p5(() => {
     let justReceivedData = false;
     let gameData = null;
 
-    const disconnectMsg = "Your opponent\nhas disconnected.";
-    let showDisconnectMsg = false;
+    let message;
+    let showMessage = false;
 
     let deltaTime = 0;
     let lastFrameTime = Date.now();
@@ -65,19 +72,22 @@ new p5(() => {
             if (amtLoaded >= totalToLoad) { //Once assets have loaded, connect to the server
                 lavaColor = color(255, 56, 4);
                 status = "menu";
-                joinButton.show();
+                joinDiv.show()
                 creditsDiv.show();
-                socket = io();
+
+                socket = io({
+                    'reconnection': false
+                }); //Connect the client, and don't reconnect if disconnected
                 socket.on('status', s => {
                     status = s;
                     if (status == "waiting") {
-                        joinButton.hide();
+                        joinDiv.hide();
                         creditsDiv.hide();
                     }
                     if (status == "menu") {
                         movingSprites = [];
                         gameData = null;
-                        joinButton.style("display", "inline");
+                        joinDiv.style("display", "inline");
                         creditsDiv.style("display", "inline");
                         sizeDOMCorrectly(); //Incase window resized in-game
                     }
@@ -90,8 +100,10 @@ new p5(() => {
                             new MovingSprite(movingSprite.name, movingSprite.width, movingSprite.height, movingSprite.x,
                                 movingSprite.y, movingSprite.vx, movingSprite.vy, movingSprite.speed, movingSprite.extra));
                     }
-                    for (let i = 0; i < d.sounds.length; i++) {
-                        sounds[d.sounds[i]].play(); //Play sound effects for that frame
+                    if (!muted) {
+                        for (let i = 0; i < d.sounds.length; i++) {
+                            sounds[d.sounds[i]].play(); //Play sound effects for that frame
+                        }
                     }
                     justReceivedData = true;
                     const index = (player.aOrB == 'A') ? 0 : 1;
@@ -107,9 +119,10 @@ new p5(() => {
                     status = "joined";
                 });
                 socket.on('gotDisconnected', () => {
-                    showDisconnectMsg = true;
+                    message = "Your opponent\nhas disconnected.";
+                    showMessage = true;
                     setTimeout(() => {
-                        showDisconnectMsg = false; //Show the msg for 3 seconds
+                        showMessage = false; //Show the msg for 3 seconds
                     }, 3000);
                 });
                 socket.on('online', amt => {
@@ -128,37 +141,70 @@ new p5(() => {
         });
 
         cnv = createCanvas(origWidth, origHeight);
+        joinDiv = select('#joinDiv');
         joinButton = select('#joinB');
+
+        let pName = "Player";
+        for (let i = 0; i < 4; i++) pName += floor(random(10));
+
+        if (localStorage.getItem("MarioPongUsername") != null) pName = localStorage.getItem("MarioPongUsername");
+
+        playerNameInp = select('#playerName').value(pName);
+        playerNameInp.changed(() => {
+            if (playerNameInp.value().length < 1) playerNameInp.value(pName);
+            localStorage.setItem("MarioPongUsername", playerNameInp.value());
+        });
+
+        playerNameInp.mouseClicked(() => {
+            document.getElementById('playerName').select();
+        });
+
         creditsDiv = select('#creditsDiv');
         joinButton.mouseClicked(() => {
-            socket.emit('addToQueue', true);
+            socket.emit('addToQueue', playerNameInp.value()); //Join the queue with the player name
         });
         widthToHeight = width / height;
-        joinButton.show(); //Show the button so it can get the correct height
+        joinDiv.show(); //Show the button so it can get the correct height
         sizeDOMCorrectly(); //Size the dom
-        joinButton.hide(); //Hide the join button until everything has loaded
+        joinDiv.hide(); //Hide the join button until everything has loaded
     }
 
     draw = () => {
-        const now = Date.now();
-        deltaTime = now - lastFrameTime;
-        lastFrameTime = now;
-
-        if (status == "joined") {
-            player.update();
-            renderGame();
-        } else {
-            render();
-        }
-        if (showDisconnectMsg) {
+        if (!initialConnect && socket && socket.connected) initialConnect = true;
+        if (initialConnect && socket.disconnected) { //If Disconnected, show it and freeze the game
+            refreshMsg = "You have been disconnected from the server!\nPlease refresh the page!";
+            alert("You have been disconnected from the server! Please refresh the page!");
+            noLoop(); //Make sure game is stopped
+            location.reload(true); //Force reload the page and the cache
             noStroke();
-            textSize(25 * scaleFactor);
+            textSize(15 * scaleFactor);
             textAlign(CENTER);
-            const w = textWidth(disconnectMsg) * .6;
+            const w = textWidth(refreshMsg) * .6;
             fill(0);
             rect(width / 2 - (w / 2), (height * .15) - (25 * scaleFactor), w, 65 * scaleFactor);
             fill(255, 0, 0);
-            text(disconnectMsg, width / 2, height * .15);
+            text(refreshMsg, width / 2, height * .15);
+        } else {
+            const now = Date.now();
+            deltaTime = now - lastFrameTime;
+            lastFrameTime = now;
+
+            if (status == "joined") {
+                player.update();
+                renderGame();
+            } else {
+                render();
+            }
+            if (showMessage) {
+                noStroke();
+                textSize(25 * scaleFactor);
+                textAlign(CENTER);
+                const w = textWidth(message) * .6;
+                fill(0);
+                rect(width / 2 - (w / 2), (height * .15) - (25 * scaleFactor), w, 65 * scaleFactor);
+                fill(255, 0, 0);
+                text(message, width / 2, height * .15);
+            }
         }
     }
 
@@ -222,10 +268,9 @@ new p5(() => {
         push();
         scale(scaleFactor);
         fill(255);
+        const divider = sprites['divider'];
+        image(divider, origWidth / 2 - divider.width / 2, 0, 2, origHeight); //Dotted line in center
         if (gameData) {
-            const divider = sprites['divider'];
-            image(divider, origWidth / 2 - divider.width / 2, 0, 2, origHeight); //Dotted line in center
-
             for (item of gameData.sprites) { //Shows players
                 if (item.name != player.nameWithPowerup && item.powerup != "dead") {
                     if (item.powerup == "Star") {
@@ -247,14 +292,17 @@ new p5(() => {
                     }
                 }
             }
+        }
+        if (player) player.show();
 
+        if (gameData) {
             const margin = 10;
             for (powerup of gameData.powerups) { //Shows powerups
                 const diameter = max(powerup.width, powerup.height);
                 const centerX = powerup.x + (powerup.width / 2);
                 const centerY = powerup.y + (powerup.height / 2);
                 image(sprites['powerupBorder'], centerX - (diameter / 2) - margin, centerY - (diameter / 2) - margin, diameter + (margin * 2), diameter + (margin * 2)); //Border Image
-                if (!powerup.collected) {
+                if (powerup.shown) {
                     let name;
                     if (powerup.name == "Fire") name = "fireflower";
                     if (powerup.name == "Big") name = "big";
@@ -303,18 +351,19 @@ new p5(() => {
             }
 
             noStroke();
-            textAlign(CENTER, CENTER);
             fill(255);
-            textSize(20);
-            text(gameData.score[0], origWidth * .45, 25); //Shows scores
-            text(gameData.score[1], origWidth * .55, 25);
+            textSize(15);
+            textAlign(RIGHT);
+            text(`${gameData.score[0].name} ${gameData.score[0].score}`, origWidth * .48, 20);
+            textAlign(LEFT);
+            text(`${gameData.score[1].score} ${gameData.score[1].name}`, origWidth * .52, 20);
         } else {
             console.log("No game data yet!");
         }
 
-        if (player) player.show();
 
         if (gameData) {
+            textAlign(CENTER, CENTER);
             noStroke();
             fill(255);
             for (txt of gameData.text) { //Shows countdown, and winner
@@ -323,11 +372,11 @@ new p5(() => {
                 if (txt.text == "START") txt.text = `START`;
                 if (txt.text[0] = "W") { //If the text is saying the winner
                     if (txt.text[1] == "M") { //If mario won
-                        if (marioOrYoshi == "Mario") txt.text = "Congratulations!\nMario Wins!";
-                        else txt.text = "Game Over\nMario Wins";
+                        if (marioOrYoshi == "Mario") txt.text = `Congratulations!\n${gameData.score[0].name} Wins!`;
+                        else txt.text = `Game Over\n${gameData.score[0].name} Wins`;
                     } else if (txt.text[1] == "Y") { //If yoshi won
-                        if (marioOrYoshi == "Mario") txt.text = "Game Over\nYoshi Wins";
-                        else txt.text = "Congratulations!\nYoshi Wins!";
+                        if (marioOrYoshi == "Mario") txt.text = `Game Over\n${gameData.score[1].name} Wins`;
+                        else txt.text = `Congratulations!\n${gameData.score[1].name} Wins!`;
                     }
                 }
                 text(txt.text, txt.x, txt.y);
@@ -359,8 +408,6 @@ new p5(() => {
 
         resizeCanvas(newWidth, newHeight);
         cnv.position(windowWidth / 2 - width / 2, windowHeight / 2 - height / 2);
-        joinButton.position((windowWidth / 2) - (joinButton.elt.clientWidth / 2),
-            (windowHeight / 2) - (joinButton.elt.clientHeight / 2));
 
         scaleFactor = newWidth / origWidth;
         render();
@@ -385,6 +432,7 @@ new p5(() => {
                 player.shoot();
             }
         }
+        if (k.keyCode = 77) muted = !muted; //Press M to mute/unmute
     }
 
     window.onkeyup = k => {
