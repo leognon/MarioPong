@@ -432,7 +432,7 @@ new p5(() => {
                 player.shoot();
             }
         }
-        if (k.keyCode = 77) muted = !muted; //Press M to mute/unmute
+        if (k.keyCode == 77) muted = !muted; //Press M to mute/unmute
     }
 
     window.onkeyup = k => {
