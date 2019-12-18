@@ -1,5 +1,7 @@
 /*
-TODO Add sound for destroying chainsaw and figure out where I could put more sound effects (countdown? powerup respawn?)
+TODO MAKE IT WORK WELL ON MOBILE. CREDITS AND INSTRUCTIONS WILL HAVE TO BE REFORMATTED
+TODO Allow longer usernames?
+WHEN TYPING YOUR USERNAME, PRESSING M WILL MUTE! MAKE SURE MUTE ONLY WORKS WHEN USERNAME FIELD IS NOT FOCUSED
 TODO Figure out ball speeding up after it's sped up once
 
 TODO Fix ball lagging when there is a delay between server send and client recieve
@@ -15,7 +17,19 @@ const app = express();
 const server = app.listen(process.env.PORT || 3000);
 const io = require('socket.io')(server)
 app.use(express.static('public'));
-console.log("Server started");
+
+require('dotenv').config();
+const nodemailer = require('nodemailer');
+let transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL,
+        pass: process.env.PASS
+    }
+});
+let currLog = "";
+
+log("Server started");
 
 const fps = 17 - 1; //1000 / 60; //Runs at ~60fps, the -1 is to fix innacuracies in JS timing
 const timingAccuracy = .6; //Lower is more accurate, but it takes more iterations
@@ -1131,13 +1145,13 @@ class Room {
         this.clientBSocket = b;
         this.game = new Game(a.playerName, b.playerName);
         this.joinRoom();
-        console.log(`${getName(a)} and ${getName(b)} joined a room`);
+        log(`${getName(a)} and ${getName(b)} joined a room`);
     }
 
     update() {
         const gameData = this.game.update();
         if (this.game.gameHasEnded) {
-            console.log(`${getName(this.clientASocket)} and ${getName(this.clientBSocket)} finished a game! Score: ${this.game.players[0].score} - ${this.game.players[1].score}`);
+            log(`${getName(this.clientASocket)} and ${getName(this.clientBSocket)} finished a game! Score: ${this.game.players[0].score} - ${this.game.players[1].score}`);
             this.leaveRoom();
         }
         io.sockets.to(this.roomId).emit('gameData', gameData);
@@ -1147,7 +1161,7 @@ class Room {
         io.sockets.to(this.roomId).emit('gotDisconnected');
         if (this.clientASocket.id == id) this.leaveRoom(this.clientBSocket.id);
         else if (this.clientBSocket.id == id) this.leaveRoom(this.clientASocket.id);
-        else console.log("Tried disconnecting a client who wasn't here!");
+        else log("Tried disconnecting a client who wasn't here!");
     }
 
     leaveRoom(id) {
@@ -1158,7 +1172,7 @@ class Room {
         } else {
             if (id == this.clientASocket.id) this.clientASocket.leave(this.roomId);
             else if (id == this.clientBSocket.id) this.clientBSocket.leave(this.roomId);
-            else console.log("In leaveRoom, the id to leave was neither clientA or B!")
+            else log("In leaveRoom, the id to leave was neither clientA or B!")
         }
         rooms.splice(rooms.indexOf(this), 1); //Delete the room now that players are gone
     }
@@ -1195,7 +1209,7 @@ function addToQueue(socket) {
             let ids = [];
             for (let s of clientsQueue) ids.push(getName(s));
 
-            console.log(`Queue: ${ids}`);
+            log(`Queue: ${ids}`);
         }
         if (clientsQueue.length >= 2) {
             let room = new Room(clientsQueue[0], clientsQueue[1]);
@@ -1224,10 +1238,46 @@ function removeFromQueue(socket) {
 function sendPlayerCount(amt) {
     online += amt;
     io.sockets.emit('online', online);
+    if (online === 0) { //If all players have disconnected, send an email with the logs
+        setTimeout(() => { //Wait 10 seconds before sending the message
+            if (online === 0) { //Make sure no one has connected while waiting
+                const mailOptions = {
+                    from: 'marioPongGame@gmail.com',
+                    to: 'leognon@gmail.com',
+                    subject: `${currLog.split("\n").length-1} new logs!`,
+                    text: currLog
+                };
+                currLog = "";
+
+                transporter.sendMail(mailOptions, (err) => {
+                    if (err) {
+                        console.error("Error: ");
+                        console.error(err);
+                    }
+                });
+            }
+        }, 10000);
+    }
+}
+
+function log(message) {
+    let formattedMsg = `${getTimeStr()} - ${message}\n`;
+    console.log(message);
+    currLog += formattedMsg;
+}
+
+function getTimeStr() {
+    let date = new Date();
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    const millis = date.getMilliseconds().toString().padStart(3, '0');
+    if (hours > 12) return `${hours-12}:${minutes}.${seconds}.${millis} PM`;
+    else return `${hours}:${minutes}.${seconds}.${millis} AM`;
 }
 
 io.sockets.on('connection', socket => {
-    console.log(`New Client ${getName(socket)}`);
+    log(`New Client ${getName(socket)}`);
     sendPlayerCount(1);
 
     socket.on('addToQueue', name => {
@@ -1262,12 +1312,12 @@ io.sockets.on('connection', socket => {
         const room = roomOf(socket);
         if (clientsQueue.indexOf(socket) >= 0) {
             removeFromQueue(socket); //If they disconnect in queue, remove them from queue
-            console.log(`${getName(socket)} disconnected from queue`);
+            log(`${getName(socket)} disconnected from queue`);
         } else if (room != false) { //If they are in game
             room.clientDisconnected(socket.id); //end that game and kick out the other client
-            console.log(`${getName(socket)} disconnected from a game`);
+            log(`${getName(socket)} disconnected from a game`);
         } else {
-            console.log(`${getName(socket)} disconnected from the menu`);
+            log(`${getName(socket)} disconnected from the menu`);
         }
         sendPlayerCount(-1);
     });
