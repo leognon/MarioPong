@@ -196,9 +196,10 @@ new p5(() => {
 
     draw = () => {
         if (status == "joined" && player && isMobile()) {
-            if (pressing) {
-                const correctMouse = mouseY / scaleFactor;
-                if (correctMouse < player.pos.y + (player.displayHeight/2)) {
+            const correctMouse = mouseY / scaleFactor;
+            const correctPlayer = player.pos.y + (player.displayHeight/2);
+            if (pressing && abs(correctMouse - correctPlayer) > 3) {
+                if (correctMouse < correctPlayer) {
                     player.up = true;
                     player.down = false;
                 } else {
