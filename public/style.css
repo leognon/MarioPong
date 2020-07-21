@@ -72,10 +72,19 @@ input {
 
 .credits {
     font-family: 'Font';
-    font-size: 10pt;
     margin: 8px;
+    font-size: 10pt;
     color: white;
 }
+@media only screen and (max-device-width: 480px) {
+    .credits {
+        font-size: 6pt;
+    }
+    .creditsRight {
+        font-size: 8pt;
+    }
+}
+
 
 a {
     margin: 0px !important;
