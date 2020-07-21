@@ -76,8 +76,7 @@ new p5(() => {
 
     setup = () => {
         if (isMobile()) {
-            alert(`Mario Pong works best on a computer. If you cannot use a computer, try using the Google web browser.
-                Be sure you zoom out fully, and refresh the page to reset the elements positioning.`);
+            alert('Mario Pong works best on a computer. If you cannot use a computer, try using the Google web browser. Be sure you zoom out fully, and refresh the page to reset the elements positioning.');
             document.getElementsByClassName('creditsRight')[1].innerText = 'Drag to move your character';
             document.getElementsByClassName('creditsRight')[2].innerText = 'Fireballs will shoot automatically';
             document.getElementsByClassName('creditsRight')[3].innerText = 'Mario Pong works best on a computer!';
