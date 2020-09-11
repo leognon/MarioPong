@@ -1238,7 +1238,8 @@ function removeFromQueue(socket) {
 function sendPlayerCount(amt) {
     online += amt;
     io.sockets.emit('online', online);
-    if (online === 0 && process.env.EMAIL_LOGS == 'true') { //If all players have disconnected, send an email with the logs
+    if (online === 0 && process.env.EMAIL_LOGS == 'true' &&
+        currLog.split('\n').length-1 >= 6) { //If all players have disconnected, send an email with the logs
         setTimeout(() => { //Wait 10 seconds before sending the message
             if (online === 0) { //Make sure no one has connected while waiting
                 const mailOptions = {
@@ -1262,18 +1263,12 @@ function sendPlayerCount(amt) {
 
 function log(message) {
     let formattedMsg = `${getTimeStr()} - ${message}\n`;
-    console.log(message);
+    console.log(formattedMsg);
     currLog += formattedMsg;
 }
 
 function getTimeStr() {
-    let date = new Date();
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const seconds = date.getSeconds().toString().padStart(2, '0');
-    const millis = date.getMilliseconds().toString().padStart(3, '0');
-    if (hours > 12) return `${hours-12}:${minutes}.${seconds}.${millis} PM`;
-    else return `${hours}:${minutes}.${seconds}.${millis} AM`;
+    return (new Date().toLocaleString('en-US', {timeZone: "America/New_York"}));
 }
 
 io.sockets.on('connection', socket => {
