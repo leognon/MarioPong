@@ -1239,7 +1239,7 @@ function sendPlayerCount(amt) {
     online += amt;
     io.sockets.emit('online', online);
     if (online === 0 && process.env.EMAIL_LOGS == 'true' &&
-        currLog.split('\n').length-1 >= 6) { //If all players have disconnected, send an email with the logs
+        currLog.split('\n').length-1 >= parseInt(process.env.EMAIL_LOGS_MIN)) { //If all players have disconnected, send an email with the logs
         setTimeout(() => { //Wait 10 seconds before sending the message
             if (online === 0) { //Make sure no one has connected while waiting
                 const mailOptions = {
