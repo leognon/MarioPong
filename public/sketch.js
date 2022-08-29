@@ -81,6 +81,13 @@ new p5(() => {
             document.getElementsByClassName('creditsRight')[2].innerText = 'Fireballs will shoot automatically';
             document.getElementsByClassName('creditsRight')[3].innerText = 'Mario Pong works best on a computer!';
         }
+        if (window.location.hostname.match('herokuapp')) {
+            if (confirm('Mario Pong will soon no longer be on herokuapp.'
+                + 'Please migrate to \'https://mario-pong.up.railway.app\''
+                + 'Would you like to go there now?')) {
+                window.location.href = 'https://mario-pong.up.railway.app'
+            }
+        }
         function loaded() {
             amtLoaded++;
             if (amtLoaded >= totalToLoad) { //Once assets have loaded, connect to the server
