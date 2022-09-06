@@ -75,18 +75,18 @@ new p5(() => {
     };
 
     setup = () => {
+        if (!window.location.hostname.match('appspot') && !window.location.hostname.match('localhost')) {
+            if (confirm('Mario Pong will soon be moved to a new URL.'
+                + '\nPlease migrate to \'https://mario-pong.uk.r.appspot.com\''
+                + '\nWould you like to go there now?')) {
+                window.location.href = 'https://mario-pong.uk.r.appspot.com'
+            }
+        }
         if (isMobile()) {
             alert('Mario Pong works best on a computer. If you cannot use a computer, try using the Google web browser. Be sure you zoom out fully, and refresh the page to reset the elements positioning.');
             document.getElementsByClassName('creditsRight')[1].innerText = 'Drag to move your character';
             document.getElementsByClassName('creditsRight')[2].innerText = 'Fireballs will shoot automatically';
             document.getElementsByClassName('creditsRight')[3].innerText = 'Mario Pong works best on a computer!';
-        }
-        if (window.location.hostname.match('herokuapp')) {
-            if (confirm('Mario Pong will soon no longer be on herokuapp.'
-                + 'Please migrate to \'https://mario-pong.up.railway.app\''
-                + 'Would you like to go there now?')) {
-                window.location.href = 'https://mario-pong.up.railway.app'
-            }
         }
         function loaded() {
             amtLoaded++;
