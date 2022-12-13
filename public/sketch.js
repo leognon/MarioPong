@@ -75,11 +75,11 @@ new p5(() => {
     };
 
     setup = () => {
-        if (!window.location.hostname.match('appspot') && !window.location.hostname.match('localhost')) {
+        if (!window.location.hostname.match('leognon') && !window.location.hostname.match('localhost')) {
             if (confirm('Mario Pong will soon be moved to a new URL.'
-                + '\nPlease migrate to \'https://mario-pong.uk.r.appspot.com\''
+                + '\nPlease migrate to \'https://mario-pong.leognon.com\''
                 + '\nWould you like to go there now?')) {
-                window.location.href = 'https://mario-pong.uk.r.appspot.com'
+                window.location.href = 'https://mario-pong.leognon.com'
             }
         }
         if (isMobile()) {
